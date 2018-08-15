@@ -1,0 +1,148 @@
+#app-content-wrapper #app-content{
+    height: 100%;
+}
+
+#inner-app-content {
+    padding: 0
+}
+
+#map{
+    width:100%;
+    height:100%;
+}
+
+.map-view-legend {
+    bottom: 85px;
+    right: 5px;
+    width: 170px;
+    max-height: 90%;
+    overflow-y: auto;
+    margin: 5px;
+    color:white;
+    background: #286090;
+    border: 1px #ddd solid;
+    z-index: 999;
+}
+
+#data-modal .modal-dialog {
+  top: 8%;
+  width: 90%;
+  height: 100%;
+  padding: 0px;
+  margin: auto;
+}
+
+.panel-body {
+    padding: 0px;
+}
+
+.left {
+    height: 100%;
+    width: 70%;
+    padding-top: 10px;
+    padding-right: 10px;
+    float: left;
+}
+
+.var_picker {
+    display: inline;
+    width: 40%;
+    float: left;
+    margin-right: 5px;
+}
+
+.var_picker .select2-search__field {
+    width: 100% !important;
+}
+
+.monthDayToggle {
+    float: left;
+    display: inline;
+}
+
+.monthDayToggle label {
+    margin-bottom: 0px !important;
+    margin-left: 5px
+    margin-right: 5px
+}
+
+.monthDayToggle .toggle.btn {
+    min-width: 90px;
+}
+.monthDayToggle .toggle.btn.btn-success {
+    width: 80px !important;
+    padding-left: 6px;
+}
+
+.monthDayToggle .toggle.btn.btn-danger {
+    width: 80px !important;
+    padding-right: 6px;
+}
+
+.date_picker {
+    float: left;
+    display: inline;
+    width: 40%;
+    margin-left: 5px
+}
+
+#rch_start_pick{
+    font-size: 11px;
+    border-top-left-radius: 5px !important;
+    border-bottom-left-radius: 5px !important;
+}
+
+#rch_end_pick{
+    font-size: 11px;
+    border-top-right-radius: 5px !important;
+    border-bottom-right-radius: 5px !important;
+}
+
+#sub_start_pick{
+    font-size: 11px;
+    border-top-left-radius: 5px !important;
+    border-bottom-left-radius: 5px !important;
+}
+
+#sub_end_pick{
+    font-size: 11px;
+    border-top-right-radius: 5px !important;
+    border-bottom-right-radius: 5px !important;
+}
+
+.panel-body .right {
+    height: 300px;
+    width: 30%;
+    float: right;
+}
+
+#rch_map{
+    width: 100%;
+    height:100%;
+}
+
+#sub_map{
+    width: 100%;
+    height:100%;
+}
+
+#lulc_map{
+    width: 100%;
+    height:100%;
+}
+
+#lulc_map_container {
+    height: 500px;
+    width: 50%;
+    float: right;
+}
+
+#lulc_data_container {
+    height: 100%;
+    width: 50%;
+    float: left;
+}
+
+.data-buttons {
+    float: left;
+}
