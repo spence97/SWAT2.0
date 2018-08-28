@@ -25,14 +25,20 @@ var LIBRARY_OBJECT = (function() {
         upstreamOverlayStream,
         featureOverlaySubbasin,
         upstreamOverlaySubbasin,
+        upstream_lulc,
+        upstream_soil,
         rch_map,
         sub_map,
+        hru_map,
         lulc_map,
+        soil_map,
+        nasaaccess_map,
         layers,
         wms_source,
         wms_layer,
         current_layer,
-        map
+        map,
+        cart
 
     /************************************************************************
      *                    PRIVATE FUNCTION DECLARATIONS
@@ -41,9 +47,15 @@ var LIBRARY_OBJECT = (function() {
         init_map,
         init_rch_map,
         init_sub_map,
+        init_hru_map,
         init_lulc_map,
+        init_soil_map,
+        init_nasaaccess_map,
         init_events,
         get_time_series,
+        add_to_cart,
+        lulc_compute,
+        soil_compute,
         get_upstream,
         save_json,
         add_streams,
@@ -133,16 +145,8 @@ var LIBRARY_OBJECT = (function() {
             })
         });
 
-//        featureOverlayStream = new ol.layer.Vector({
-//            source: new ol.source.Vector()
-//        });
-//
-//        featureOverlaySubbasin = new ol.layer.Vector({
-//            source: new ol.source.Vector()
-//        });
-
         var view = new ol.View({
-            center: [104.5, 17.5],
+            center: [0, 0],
             projection: projection,
             zoom: 5.5
         });
@@ -243,6 +247,45 @@ var LIBRARY_OBJECT = (function() {
 
     };
 
+    init_hru_map = function() {
+//      Initialize all the initial map elements (projection, basemap, layers, center, zoom)
+        var projection = ol.proj.get('EPSG:4326');
+        var baseLayer = new ol.layer.Tile({
+            source: new ol.source.BingMaps({
+                key: '5TC0yID7CYaqv3nVQLKe~xWVt4aXWMJq2Ed72cO4xsA~ApdeyQwHyH_btMjQS1NJ7OHKY8BK-W-EMQMrIavoQUMYXeZIQOUURnKGBOC7UCt4',
+                imagerySet: 'AerialWithLabels' // Options 'Aerial', 'AerialWithLabels', 'Road'
+            })
+        });
+
+        featureOverlaySubbasin = new ol.layer.Vector({
+            source: new ol.source.Vector()
+        });
+
+
+        var view = new ol.View({
+            center: [0, 0],
+            projection: projection,
+            zoom: 5.5
+        });
+
+        wms_source = new ol.source.ImageWMS();
+
+        wms_layer = new ol.layer.Image({
+            source: wms_source
+        });
+
+        layers = [baseLayer, featureOverlaySubbasin];
+
+        hru_map = new ol.Map({
+            target: document.getElementById("hru_map"),
+            layers: layers,
+            view: view
+        });
+
+        map.crossOrigin = 'anonymous';
+
+    };
+
     init_lulc_map = function() {
 //      Initialize all the initial map elements (projection, basemap, layers, center, zoom)
         var projection = ol.proj.get('EPSG:4326');
@@ -274,6 +317,84 @@ var LIBRARY_OBJECT = (function() {
 
         lulc_map = new ol.Map({
             target: document.getElementById("lulc_map"),
+            layers: layers,
+            view: view
+        });
+
+        map.crossOrigin = 'anonymous';
+
+    };
+
+    init_soil_map = function() {
+//      Initialize all the initial map elements (projection, basemap, layers, center, zoom)
+        var projection = ol.proj.get('EPSG:4326');
+        var baseLayer = new ol.layer.Tile({
+            source: new ol.source.BingMaps({
+                key: '5TC0yID7CYaqv3nVQLKe~xWVt4aXWMJq2Ed72cO4xsA~ApdeyQwHyH_btMjQS1NJ7OHKY8BK-W-EMQMrIavoQUMYXeZIQOUURnKGBOC7UCt4',
+                imagerySet: 'AerialWithLabels' // Options 'Aerial', 'AerialWithLabels', 'Road'
+            })
+        });
+
+        featureOverlayStream = new ol.layer.Vector({
+            source: new ol.source.Vector()
+        });
+
+
+        var view = new ol.View({
+            center: [0, 0],
+            projection: projection,
+            zoom: 5.5
+        });
+
+        wms_source = new ol.source.ImageWMS();
+
+        wms_layer = new ol.layer.Image({
+            source: wms_source
+        });
+
+        layers = [baseLayer, featureOverlaySubbasin];
+
+        soil_map = new ol.Map({
+            target: document.getElementById("soil_map"),
+            layers: layers,
+            view: view
+        });
+
+        map.crossOrigin = 'anonymous';
+
+    };
+
+    init_nasaaccess_map = function() {
+//      Initialize all the initial map elements (projection, basemap, layers, center, zoom)
+        var projection = ol.proj.get('EPSG:4326');
+        var baseLayer = new ol.layer.Tile({
+            source: new ol.source.BingMaps({
+                key: '5TC0yID7CYaqv3nVQLKe~xWVt4aXWMJq2Ed72cO4xsA~ApdeyQwHyH_btMjQS1NJ7OHKY8BK-W-EMQMrIavoQUMYXeZIQOUURnKGBOC7UCt4',
+                imagerySet: 'AerialWithLabels' // Options 'Aerial', 'AerialWithLabels', 'Road'
+            })
+        });
+
+        featureOverlayStream = new ol.layer.Vector({
+            source: new ol.source.Vector()
+        });
+
+
+        var view = new ol.View({
+            center: [0, 0],
+            projection: projection,
+            zoom: 5.5
+        });
+
+        wms_source = new ol.source.ImageWMS();
+
+        wms_layer = new ol.layer.Image({
+            source: wms_source
+        });
+
+        layers = [baseLayer, featureOverlaySubbasin];
+
+        nasaaccess_map = new ol.Map({
+            target: document.getElementById("nasaaccess_map"),
             layers: layers,
             view: view
         });
@@ -324,7 +445,6 @@ var LIBRARY_OBJECT = (function() {
                 var viewResolution = view.getResolution();
 
                 var wms_url = current_layer.getSource().getGetFeatureInfoUrl(evt.coordinate, viewResolution, view.getProjection(), {'INFO_FORMAT': 'application/json'}); //Get the wms url for the clicked point
-                console.log(wms_url)
                 if (wms_url) {
                     sessionStorage.setItem('userId', Math.random().toString(36).substr(2,5))
                     //Retrieving the details for clicked point via the url
@@ -346,7 +466,6 @@ var LIBRARY_OBJECT = (function() {
                             sessionStorage.setItem('streamID', streamID)
                             var watershed = $('#watershed_select').val();
                             sessionStorage.setItem('watershed', watershed)
-                            console.log(streamID, watershed)
                             $("#data-modal").modal('show');
 
                             get_upstream(reach_store_id, basin_store_id, watershed, streamID, sessionStorage.userId);
@@ -483,7 +602,10 @@ var LIBRARY_OBJECT = (function() {
                 rch_map.addLayer(featureOverlayStream);
                 sub_map.addLayer(upstreamOverlaySubbasin);
                 sub_map.addLayer(featureOverlaySubbasin);
+                hru_map.addLayer(upstreamOverlaySubbasin);
                 lulc_map.addLayer(upstreamOverlaySubbasin);
+                soil_map.addLayer(upstreamOverlaySubbasin);
+                nasaaccess_map.addLayer(upstreamOverlaySubbasin);
             }
         });
     }
@@ -492,7 +614,7 @@ var LIBRARY_OBJECT = (function() {
         $.getJSON(upstream_reach_url, function(data) {
             var upstreamJson = data;
             upstreamJson['uniqueId'] = sessionStorage.userId
-            upstreamJson['type'] = 'reach'
+            upstreamJson['featureType'] = 'reach'
             $.ajax({
                 type: 'POST',
                 url: "/apps/swat2/save_json/",
@@ -501,9 +623,7 @@ var LIBRARY_OBJECT = (function() {
                     var bbox = result.bbox
                     var srs = result.srs
                     var new_extent = ol.proj.transformExtent(bbox, srs, 'EPSG:4326');
-                    console.log(new_extent)
                     sessionStorage.setItem('streamExtent', new_extent)
-                    console.log(sessionStorage.streamExtent.split(',').map(Number))
                     var center = ol.extent.getCenter(new_extent)
                     var view = new ol.View({
                         center: center,
@@ -521,7 +641,7 @@ var LIBRARY_OBJECT = (function() {
         $.getJSON(upstream_basin_url, function(data) {
             var upstreamJson = data;
             upstreamJson['uniqueId'] = sessionStorage.userId
-            upstreamJson['type'] = 'basin'
+            upstreamJson['featureType'] = 'basin'
             $.ajax({
                 type: 'POST',
                 url: "/apps/swat2/save_json/",
@@ -540,9 +660,15 @@ var LIBRARY_OBJECT = (function() {
                     });
 
                     sub_map.updateSize();
-                    sub_map.getView().fit(new_extent, sub_map.getSize());
+                    sub_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), sub_map.getSize());
+                    hru_map.updateSize();
+                    hru_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), hru_map.getSize());
                     lulc_map.updateSize();
-                    lulc_map.getView().fit(new_extent, lulc_map.getSize());
+                    lulc_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), lulc_map.getSize());
+                    soil_map.updateSize();
+                    soil_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), soil_map.getSize());
+                    nasaaccess_map.updateSize();
+                    nasaaccess_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), nasaaccess_map.getSize());
 
                 }
             })
@@ -650,6 +776,10 @@ var LIBRARY_OBJECT = (function() {
 //      add subbasins to the map
         map.addLayer(lulc_layer);
 
+        var img = $('<img id="legend">');
+        img.attr("src", geoserver_url + '?request=GetLegendGraphic&version=1.1.0&format=image/png&width=10&height=10&layer=swat:lmrb_2010_lulc_map1')
+        img.appendTo('#legend_container')
+
     }
 
 
@@ -673,6 +803,9 @@ var LIBRARY_OBJECT = (function() {
 //      add subbasins to the map
         map.addLayer(soil_layer);
 
+        var img = $('<img id="legend">');
+        img.attr("src", geoserver_url + '?request=GetLegendGraphic&version=1.1.0&format=image/png&width=10&height=10&layer=swat:lmrb_soil_hwsd1')
+        img.appendTo('#legend_container')
     }
 
 
@@ -686,23 +819,29 @@ var LIBRARY_OBJECT = (function() {
 
     toggleLayers = function() {
         if (($('#lulcOption').is(':checked')) && (!$(".toggle").hasClass( "off" ))) {
+            $('#legend_container > img').remove();
             add_lulc();
             add_basins();
             add_streams();
         } else if (($('#soilOption').is(':checked')) && (!$(".toggle").hasClass( "off" ))) {
+            $('#legend_container > img').remove();
             add_soil();
             add_basins();
             add_streams();
         } else if (($('#noneOption').is(':checked')) && (!$(".toggle").hasClass( "off" ))) {
+            $('#legend_container > img').remove();
             add_basins();
             add_streams();
         } else if (($('#lulcOption').is(':checked')) && ($(".toggle").hasClass( "off" ))) {
+            $('#legend_container > img').remove();
             add_lulc();
             add_streams();
         } else if (($('#soilOption').is(':checked')) && ($(".toggle").hasClass( "off" ))) {
+            $('#legend_container > img').remove();
             add_soil();
             add_streams();
         } else if (($('#noneOption').is(':checked')) && ($(".toggle").hasClass( "off" ))) {
+            $('#legend_container > img').remove();
             add_streams();
         }
 
@@ -717,16 +856,24 @@ var LIBRARY_OBJECT = (function() {
         } else if ($('#sub_link').hasClass('active')) {
             $('#sub_compute').removeClass('hidden')
             sub_map.updateSize();
-            sub_map.getView().fit(sessionStorage.streamExtent.split(',').map(Number), sub_map.getSize());
+            sub_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), sub_map.getSize());
         } else if ($('#hru_link').hasClass('active')) {
             $('#hru_compute').removeClass('hidden')
+            hru_map.updateSize();
+            hru_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), hru_map.getSize());
         } else if ($("#lulc_link").hasClass('active')) {
             $('#lulc_compute').removeClass('hidden')
             lulc_map.updateSize();
-            lulc_map.getView().fit(sessionStorage.streamExtent.split(',').map(Number), lulc_map.getSize());
+            lulc_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), lulc_map.getSize());
         } else if ($('#soil_link').hasClass('active')) {
             $('#soil_compute').removeClass('hidden')
+            soil_map.updateSize();
+            soil_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), soil_map.getSize());
         } else if ($('#nasaaccess_link').hasClass('active')) {
+            nasaaccess_map.updateSize();
+            nasaaccess_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), nasaaccess_map.getSize());
+        } else if ($('#datacart_tab').hasClass('active')) {
+            $('#downloadData').removeClass('hidden')
         }
     }
 
@@ -791,6 +938,7 @@ var LIBRARY_OBJECT = (function() {
         } else {
             monthOrDay = 'Monthly'
         }
+        console.log(monthOrDay)
 //      AJAX call to the timeseries python controller to run the rch data parser function
         $.ajax({
             type: 'POST',
@@ -811,10 +959,14 @@ var LIBRARY_OBJECT = (function() {
 
                 setTimeout(function () {
                     $('#error').addClass('hidden')
-                }, 20000);
+                }, 5000);
             },
             success: function (data) {
 //              Take the resulting json object from the python function and plot it using the Highcharts API
+                data.userId = sessionStorage.userId
+                console.log(data)
+                var data_str = JSON.stringify(data)
+                sessionStorage.setItem('timeseries', data_str)
                 var values = data.Values
                 var dates = data.Dates
                 var parameters = data.Parameters
@@ -824,6 +976,7 @@ var LIBRARY_OBJECT = (function() {
                 var chartContainer
 
                 if (!data.error) {
+                    $('#saveData').removeClass('hidden')
                     if (fileType === 'rch') {
                         $('#view-reach-loading').addClass('hidden');
                         $('#rch_chart_container').removeClass('hidden');
@@ -952,6 +1105,261 @@ var LIBRARY_OBJECT = (function() {
         });
     };
 
+    add_to_cart = function(){
+        $.ajax({
+            type: 'POST',
+            url: "/apps/swat2/save_file/",
+            data: sessionStorage.timeseries,
+            success: function(result){
+                console.log(result)
+                var fileType = result.FileType
+                var newrow = '<tr>' + '<td>' + result.FileType + '</td><td>' + result.Parameters + '</td><td>' +
+                                result.TimeStep + '</td><td>' + result.Start + '</td><td>' +
+                                result.End + '</td></tr>'
+                $('#tbody').append(newrow);
+                if (fileType === 'rch') {
+                    $('#rch_save_success').removeClass('hidden')
+                    setTimeout(function () {
+                        $('#rch_save_success').addClass('hidden')
+                    }, 5000);
+                }
+                else if (fileType === 'sub') {
+                    $('#sub_save_success').removeClass('hidden')
+                    setTimeout(function () {
+                        $('#sub_save_success').addClass('hidden')
+                    }, 5000);
+                }
+
+            }
+        });
+    };
+
+
+
+    soil_compute = function(){
+        var watershed = $('#watershed_select option:selected').val()
+        var userId = sessionStorage.userId
+        var rasterType = 'soil'
+
+        $.ajax({
+            type: 'POST',
+            url: "/apps/swat2/coverage_compute/",
+            data: {
+                'userId': userId,
+                'watershed': watershed,
+                'raster_type': rasterType
+                },
+            success: function(result){
+                $('#soil-pie-loading').addClass('hidden')
+                var classValues = result.classValues
+                var classColors = result.classColors
+                var classData = []
+
+                for (var key in classValues){
+                    classData.push({'name': key, 'y': classValues[key], 'color': classColors[key]})
+                }
+
+                $('#soilPieContainer').removeClass('hidden')
+                Highcharts.chart('soilPieContainer', {
+                    chart: {
+                        plotBackgroundColor: null,
+                        plotBorderWidth: null,
+                        plotShadow: false,
+                        type: 'pie'
+                    },
+                    title: {
+                        text: 'Soil Coverages'
+                    },
+                    tooltip: {
+                        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+                    },
+                    plotOptions: {
+                        pie: {
+                            allowPointSelect: true,
+                            cursor: 'pointer',
+                            dataLabels: {
+                                enabled: false,
+                                format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+                                style: {
+                                    color: (Highcharts.theme && Highcharts.theme.contrastTextColor) || 'black'
+                                }
+                            },
+                            showInLegend: true,
+                        }
+                    },
+                    series: [{
+                        name: 'Coverage',
+                        colorByPoint: true,
+                        data: classData
+                    }]
+                });
+//            add the clipped lulc raster for the selected watershed
+                var store = 'upstream_soil_' + userId
+                var store_id = 'swat:' + store
+
+                //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
+                wms_source = new ol.source.ImageWMS({
+                    url: geoserver_url,
+                    params: {'LAYERS':store_id, 'STYLES':'soil'},
+                    serverType: 'geoserver',
+                    crossOrigin: 'Anonymous'
+                });
+
+                upstream_soil = new ol.layer.Image({
+                    source: wms_source
+                });
+
+                soil_map.removeLayer(upstreamOverlaySubbasin);
+                soil_map.addLayer(upstream_soil);
+                soil_map.addLayer(upstreamOverlaySubbasin);
+                soil_map.addLayer(upstreamOverlayStream);
+
+
+                var color = '#ffffff';
+                    color = ol.color.asArray(color);
+                    color = color.slice();
+                    color[3] = 0;
+
+                var hollow_style = new ol.style.Style({stroke: new ol.style.Stroke({
+                                                                        color: '#cccccc',
+                                                                        width: 2
+                                                                    }),
+                                                        fill: new ol.style.Fill({
+                                                                        color: color
+                                                                  })
+                                        })
+                upstreamOverlaySubbasin.setStyle(hollow_style)
+
+
+            }
+        });
+    };
+
+    lulc_compute = function(){
+        var watershed = $('#watershed_select option:selected').val()
+        var userId = sessionStorage.userId
+        var rasterType = 'lulc'
+
+        $.ajax({
+            type: 'POST',
+            url: "/apps/swat2/coverage_compute/",
+            data: {
+                'userId': userId,
+                'watershed': watershed,
+                'raster_type': rasterType
+                },
+            success: function(result){
+                $('#lulc-pie-loading').addClass('hidden')
+//            plot coverage percentages in pie chart
+                var classes = result.classes
+                var classValues = result.classValues
+                var classColors = result.classColors
+                var subclassValues = result.subclassValues
+                var subclassColors = result.subclassColors
+                var classData = []
+                var subclassData = []
+
+                for (var key in classValues){
+                    classData.push({'name': key, 'y': classValues[key], 'color': classColors[key], 'drilldown': key})
+                }
+
+                var data = []
+                for (var key in classValues){
+                    for (var newKey in classes){
+                        if (classes[newKey] === key){
+                            data.push({'name': newKey, 'y': subclassValues[newKey], 'color': subclassColors[newKey]})
+                        }
+                    }
+                    subclassData.push({'name': key, 'id': key, 'data': data})
+                    data = []
+                }
+
+                $('#lulcPieContainer').removeClass('hidden')
+                Highcharts.chart('lulcPieContainer', {
+                    chart: {
+                        plotBackgroundColor: null,
+                        plotBorderWidth: null,
+                        plotShadow: false,
+                        type: 'pie'
+                    },
+                    title: {
+                        text: 'Land Cover Distribution',
+                    },
+                    tooltip: {
+                        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+                    },
+                    plotOptions: {
+                        pie: {
+                            allowPointSelect: true,
+                            cursor: 'pointer',
+                            dataLabels: {
+                                enabled: false,
+                                format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+                                style: {
+                                    color: (Highcharts.theme && Highcharts.theme.contrastTextColor) || 'black'
+                                }
+                            },
+                            showInLegend: true
+                        }
+                    },
+                    series: [{
+                        name: 'Coverage',
+                        colorByPoint: true,
+                        data: classData
+                    }],
+                    'drilldown': {
+                        drillUpButton: {
+                            position: {
+                                verticalAlign: 'top'
+                            }
+                        },
+                        'series': subclassData
+                    }
+                });
+//            add the clipped lulc raster for the selected watershed
+                var store = 'upstream_lulc_' + userId
+                var store_id = 'swat:' + store
+
+                //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
+                wms_source = new ol.source.ImageWMS({
+                    url: geoserver_url,
+                    params: {'LAYERS':store_id, 'STYLES':'lulc'},
+                    serverType: 'geoserver',
+                    crossOrigin: 'Anonymous'
+                });
+
+                upstream_lulc = new ol.layer.Image({
+                    source: wms_source
+                });
+
+                lulc_map.removeLayer(upstreamOverlaySubbasin);
+                lulc_map.addLayer(upstream_lulc);
+                lulc_map.addLayer(upstreamOverlaySubbasin);
+                lulc_map.addLayer(upstreamOverlayStream);
+
+
+                var color = '#ffffff';
+                    color = ol.color.asArray(color);
+                    color = color.slice();
+                    color[3] = 0;
+
+                var hollow_style = new ol.style.Style({stroke: new ol.style.Stroke({
+                                                                        color: '#cccccc',
+                                                                        width: 2
+                                                                    }),
+                                                        fill: new ol.style.Fill({
+                                                                        color: color
+                                                                  })
+                                        })
+                upstreamOverlaySubbasin.setStyle(hollow_style)
+            }
+
+        })
+    }
+
+
+
+
     function loadXMLDoc() {
         var request = new XMLHttpRequest();
         request.onreadystatechange = function() {
@@ -1023,10 +1431,23 @@ var LIBRARY_OBJECT = (function() {
         $('#rch_start_pick').attr('placeholder', 'Start Date')
         $('#rch_end_pick').attr('placeholder', 'End Date')
         $('#rch_chart_container').addClass('hidden');
+        $('#sub_var_select').val([]).trigger('change');
+        $('#sub_var_select').attr('placeholder', 'Select Variable(s)')
+        $('#sub_start_pick').val('')
+        $('#sub_end_pick').val('')
+        $('#sub_start_pick').attr('placeholder', 'Start Date')
+        $('#sub_end_pick').attr('placeholder', 'End Date')
+        $('#sub_chart_container').addClass('hidden');
+        $('#lulcPieContainer').addClass('hidden');
+        $('#soilPieContainer').addClass('hidden');
         rch_map.removeLayer(featureOverlayStream)
         rch_map.removeLayer(upstreamOverlayStream)
         sub_map.removeLayer(featureOverlaySubbasin)
         sub_map.removeLayer(upstreamOverlaySubbasin)
+        hru_map.removeLayer(upstreamOverlaySubbasin)
+        lulc_map.removeLayer(upstreamOverlaySubbasin)
+        soil_map.removeLayer(upstreamOverlaySubbasin)
+        nasaaccess_map.removeLayer(upstreamOverlaySubbasin)
     }
 
 
@@ -1036,7 +1457,10 @@ var LIBRARY_OBJECT = (function() {
         updateView();
         init_rch_map();
         init_sub_map();
+        init_hru_map();
         init_lulc_map();
+        init_soil_map();
+        init_nasaaccess_map();
         init_events();
         add_basins();
         add_streams();
@@ -1058,7 +1482,9 @@ var LIBRARY_OBJECT = (function() {
 
     $(function() {
         init_all();
-
+        cart = []
+        sessionStorage.setItem('cart', JSON.stringify(cart))
+        console.log(sessionStorage.cart)
         $(".radio").change(function(){
             clearLayers();
             toggleLayers();
@@ -1079,6 +1505,8 @@ var LIBRARY_OBJECT = (function() {
             $('#hru_compute').addClass('hidden')
             $('#lulc_compute').addClass('hidden')
             $('#soil_compute').addClass('hidden')
+            $('#saveData').addClass('hidden')
+            $('#downloadData').addClass('hidden')
             setTimeout(updateTab, 300);
         })
 
@@ -1090,11 +1518,9 @@ var LIBRARY_OBJECT = (function() {
             var parameters = []
             $('#rch_var_select option:selected').each(function() {
                 parameters.push( $( this ).val());
-                console.log(parameters)
             });
             var streamID = sessionStorage.streamID
             var fileType = 'rch'
-            console.log(watershed, start, end, parameters, streamID, fileType)
             get_time_series(watershed, start, end, parameters, streamID, fileType);
         })
 
@@ -1109,8 +1535,27 @@ var LIBRARY_OBJECT = (function() {
             });
             var streamID = sessionStorage.streamID
             var fileType = 'sub'
-            console.log(watershed, start, end, parameters, streamID, fileType)
             get_time_series(watershed, start, end, parameters, streamID, fileType);
+        })
+
+        $("#lulc_comp").click(function(){
+            var raster_type = 'lulc'
+            lulc_compute(raster_type);
+            $('#lulc-pie-loading').removeClass('hidden')
+        })
+
+        $("#soil_comp").click(function(){
+            var raster_type = 'soil'
+            soil_compute(raster_type);
+            $('#soil-pie-loading').removeClass('hidden')
+        })
+
+        $("#std_view").click(function(){
+            $("#summary-modal").modal('show');
+        })
+
+        $("#saveData").click(function(){
+            add_to_cart();
         })
     })
     return public_interface;

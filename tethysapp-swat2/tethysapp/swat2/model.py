@@ -9,10 +9,11 @@ from datetime import datetime
 from dateutil import relativedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import xml.etree.cElementTree as ET
-import csv, os, subprocess, requests, smtplib, fiona, json
+import os, subprocess, requests, smtplib, fiona, json
 
 def extract_monthly_rch(watershed, start, end, parameters, reachid):
 
@@ -28,7 +29,7 @@ def extract_monthly_rch(watershed, start, end, parameters, reachid):
     total_months = delta.years * 12 + delta.months
 
     start_index = relativedelta.relativedelta(dt_start, datetime.strptime(str(year_start) + '-01', '%Y-%m')).months
-    end_index = start_index + total_months
+    end_index = start_index + total_months + 1
 
     daterange = pd.date_range(start, end, freq='1M')
     daterange = daterange.union([daterange[-1] + 1])
@@ -50,7 +51,7 @@ def extract_monthly_rch(watershed, start, end, parameters, reachid):
 
 
 
-    rchDict = {'Dates': daterange_str, 'ReachID': reachid, 'Parameters': parameters, 'Values':{}, 'Names': [], 'Timestep': 'Monthly'}
+    rchDict = {'Watershed': watershed, 'Dates': daterange_str, 'ReachID': reachid, 'Parameters': parameters, 'Values':{}, 'Names': [], 'Timestep': 'Monthly', 'FileType': 'rch'}
     for x in range(0,len(parameters)):
         param_index = rch_param_vals.index(parameters[x])
         param_name = rch_param_names[parameters[x]]
@@ -58,12 +59,11 @@ def extract_monthly_rch(watershed, start, end, parameters, reachid):
         f = open(monthly_rch_path)
         start_year_str = ' ' + str(year_start-1) + ' '
         end_year_str = str(year_end)
-
+        for skip_line in f:
+            if 'RCH' in skip_line:
+                break
 
         if str(year_start) == first_year:
-            for skip_line in f:
-                if 'RCH' in skip_line:
-                    break
             for num, line in enumerate(f,1):
                 line = line.strip()
                 columns = line.split()
@@ -99,7 +99,7 @@ def extract_monthly_rch(watershed, start, end, parameters, reachid):
         rchDict['Values'][x] = ts
         rchDict['Names'].append(param_name)
 
-        return rchDict
+    return rchDict
 
 
 def extract_daily_rch(watershed, start, end, parameters, reachid):
@@ -142,7 +142,7 @@ def extract_daily_rch(watershed, start, end, parameters, reachid):
     daterange_str = [d.strftime('%b %d, %Y') for d in daterange]
     daterange_mil = [int(d.strftime('%s')) * 1000 for d in daterange]
 
-    rchDict = {'Dates': daterange_str, 'ReachID': reachid, 'Parameters': parameters, 'Values': {}, 'Names': [], 'Timestep': 'Daily'}
+    rchDict = {'Watershed': watershed, 'Dates': daterange_str, 'ReachID': reachid, 'Parameters': parameters, 'Values': {}, 'Names': [], 'Timestep': 'Daily', 'FileType': 'rch'}
 
     for x in range(0, len(parameters)):
 
@@ -202,24 +202,20 @@ def extract_sub(watershed, start, end, parameters, subid):
     daterange_mil = [int(d.strftime('%s')) * 1000 for d in daterange]
 
 
-    subDict = {'Dates': daterange_str, 'ReachID': subid, 'Parameters': parameters, 'Values':{}, 'Names': [], 'Timestep': 'Daily'}
+    subDict = {'Watershed': watershed, 'Dates': daterange_str, 'ReachID': subid, 'Parameters': parameters, 'Values':{}, 'Names': [], 'Timestep': 'Daily', 'FileType': 'sub'}
 
     for x in range(0, len(parameters)):
         param_index = sub_param_vals.index(parameters[x])
         param_name = sub_param_names[parameters[x]]
-        print(param_index)
-        print(param_name)
         data = []
         f = open(sub_path)
 
         for skip_line in f:
             if date_str in skip_line:
-                print(skip_line)
                 break
 
         for num, line in enumerate(f,1):
             line = str(line.strip())
-            print(line)
             columns = line.split()
             if columns[0] != 'BIGSUB':
                 split = columns[0]
@@ -265,7 +261,7 @@ def get_upstreams(watershed, streamID):
 def write_shapefile(id):
     json_path = os.path.join(temp_workspace, id)
 
-    upstream_json = json.loads(open(json_path + '/upstream.json').read())
+    upstream_json = json.loads(open(json_path + '/basin_upstream.json').read())
 
     coords = []
 
@@ -278,8 +274,7 @@ def write_shapefile(id):
     shapefile_path = os.path.join(temp_workspace, id, 'shapefile')
     os.makedirs(shapefile_path, 0777)
 
-    shapefile_path = shapefile_path + '/upstream.shp'
-    print(shapefile_path)
+    shapefile_path = shapefile_path + '/basin_upstream.shp'
 
     schema = {'geometry': 'Polygon', 'properties': {'watershed': 'str:50'}}
     with fiona.open(shapefile_path, 'w', 'ESRI Shapefile', schema) as layer:
@@ -287,7 +282,7 @@ def write_shapefile(id):
 
 
 def clip_raster(id, raster_type):
-    input_json = os.path.join(temp_workspace, id, 'upstream.json')
+    input_json = os.path.join(temp_workspace, id, 'basin_upstream.json')
     input_tif = os.path.join(data_path, 'lower_mekong', raster_type + '.tif')
     output_tif = os.path.join(temp_workspace, id, 'upstream_'+ raster_type + '_' + id + '.tif')
 
@@ -313,22 +308,25 @@ def coverage_stats(watershed, id, raster_type):
     band = ds.GetRasterBand(1)
     array = np.array(band.ReadAsArray())
     size = array.size
-    print(size)
     unique, counts = np.unique(array, return_counts=True)
     unique_dict = dict(zip(unique, counts))
-    print(unique_dict)
+
+    color_key_path = os.path.join(data_path, watershed, raster_type + '_info.txt')
+    nodata_values = []
+    with open(color_key_path) as f:
+        for line in f:
+            splitline = line.split('  ')
+            if splitline[1] == 'NoData':
+                nodata_values.append(splitline[0])
     for x in unique_dict:
-        if x == 127:
+        if str(x) in nodata_values:
             nodata_size = unique_dict[x]
             size = size - nodata_size
             unique_dict[x] = 0
-    print(size)
-    color_key_path = os.path.join(data_path, watershed, 'lulc_colors.txt')
 
     for x in unique_dict:
         if x != 127:
             unique_dict[x] = float(unique_dict[x]) / size * 100
-    print(unique_dict)
     if raster_type == 'lulc':
         lulc_dict = {'classes': {},'classValues': {}, 'classColors': {}, 'subclassValues': {}, 'subclassColors': {}}
 
@@ -337,7 +335,7 @@ def coverage_stats(watershed, id, raster_type):
                 for line in f:
                     splitline = line.split('  ')
                     splitline = [x.strip() for x in splitline]
-                    if val != 127 and str(val) in splitline[0]:
+                    if str(val) not in nodata_values and str(val) in splitline[0]:
                         lulc_dict['subclassColors'][splitline[2]] = splitline[-1]
                         lulc_dict['subclassValues'][splitline[2]] = unique_dict[val]
                         lulc_dict['classes'][splitline[2]] = splitline[1]
@@ -347,24 +345,31 @@ def coverage_stats(watershed, id, raster_type):
                         else:
                             lulc_dict['classValues'][splitline[1]] += unique_dict[val]
 
-
         return(lulc_dict)
+
+    if raster_type == 'soil':
+        soil_dict = {'classValues': {}, 'classColors': {}}
+        for val in unique_dict:
+            with open(color_key_path) as f:
+                for line in f:
+                    splitline = line.split('  ')
+                    splitline = [x.strip() for x in splitline]
+                    if str(val) not in nodata_values and str(val) in splitline[0]:
+                        soil_dict['classColors'][splitline[1]] = splitline[2]
+                        soil_dict['classValues'][splitline[1]] = unique_dict[val]
+        return(soil_dict)
 
 
 def save_files(id):
 
     rch_path = os.path.join(data_path, id)
-    print(rch_path)
     temp_path = temp_workspace
-    print(temp_path)
     temp_files = os.listdir(temp_path)
-    print(temp_files)
 
     for file in temp_files:
         if file.endswith('Store'):
             temp_file_path = os.path.join(temp_path, file)
             os.remove(temp_file_path)
-            print('.DS_Store file removed')
         if file.endswith('.rch'):
             print('saving file to app workspace')
             temp_file_path = os.path.join(temp_path, file)
@@ -396,9 +401,7 @@ def save_files(id):
                     store = id + '-reach'
                 elif '-subbasin' in file or '-catch' in file or '-boundary' in file:
                     store = id + '-subbasin'
-                print(store)
                 store_id = WORKSPACE + ':' + store
-                print(store_id)
                 geoserver_engine.create_shapefile_resource(
                     store_id=store_id,
                     shapefile_zip=zip_archive,
@@ -409,49 +412,74 @@ def save_files(id):
     write_xml(id)
 
 
-def write_csv(watershed, streamID, parameters, dates, values, timestep):
-    # param_str = '&'.join(parameters).lower()
-    # param_str = ''.join(param_str.split('_'))
-    #
-    # watershed = ''.join(watershed.split('_'))
-    #
-    # if timestep == 'Monthly':
-    #     start = datetime.datetime.strptime(dates[0], '%b %y').strftime('%m%Y')
-    #     end = datetime.datetime.strptime(dates[-1], '%b %y').strftime('%m%Y')
-    # else:
-    #     start = datetime.datetime.strptime(dates[0], '%b %d, %Y').strftime('%m%d%Y')
-    #     end = datetime.datetime.strptime(dates[-1], '%b %d, %Y').strftime('%m%d%Y')
-    #
-    # file_name = 'SWAT_'+ watershed + '_rch' + streamID + '_' + param_str
-    # print(file_name)
+def write_csv(data):
 
-    csv_path = os.path.join(temp_workspace, 'swat_data.csv')
-    try:
-        os.remove(csv_path)
-    except OSError:
-        pass
+    watershed = data['Watershed']
+    watershed = watershed.replace('_', '')
+
+    streamID = data['ReachID']
+
+    parameters = data['Parameters']
+    param_str = '&'.join(parameters)
+    param_str_low = param_str.lower()
+    param_str_low = ''.join(param_str.split('_'))
+
+    timestep = data['Timestep']
+
+    dates = data['Dates']
+
+    values = data['Values']
+
+    file_type = data['FileType']
+
+    unique_id = data['userId']
+
+    start = ''
+    end = ''
 
     if timestep == 'Monthly':
+        start = datetime.strptime(dates[0], '%b %y').strftime('%-m%Y')
+        end = datetime.strptime(dates[-1], '%b %y').strftime('%-m%Y')
+    elif timestep == 'Daily':
+        start = datetime.strptime(dates[0], '%b %d, %Y').strftime('%-m%d%Y')
+        end = datetime.strptime(dates[-1], '%b %d, %Y').strftime('%-m%d%Y')
+
+    file_name = watershed + '_' + file_type + streamID + '_' + param_str_low + '_' + start + '-' + end
+    file_dict = {'Parameters': param_str, 'Start': start, 'End': end, 'FileType': file_type, 'TimeStep': timestep}
+
+    csv_path = os.path.join(temp_workspace, unique_id, file_name + '.csv')
+
+    fieldnames = []
+    if timestep == 'Monthly':
         fieldnames = ['UTC Offset (sec)', 'Date (m/y)']
-    else:
+    elif timestep == 'Daily':
         fieldnames = ['UTC Offset (sec)', 'Date (m/d/y)']
+
     fieldnames.extend(parameters)
 
-    with open(csv_path, 'w') as csvfile:
-        fieldnames = fieldnames
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    utc_list = []
+    date_list = []
+    for i in range(0, len(dates)):
+        utc_list.append(values['0'][i][0]/1000)
+        if timestep == 'Monthly':
+            date_list.append(datetime.strptime(dates[i], '%b %y').strftime('%-m/%Y'))
+        elif timestep == 'Daily':
+            date_list.append(datetime.strptime(dates[i], '%b %d, %Y').strftime('%-m/%d/%Y'))
+    d = OrderedDict()
+    d[fieldnames[0]] = utc_list
+    d[fieldnames[1]] = date_list
 
-        writer.writeheader()
+    for j in range(0, len(parameters)):
+        value_list = []
+        param = parameters[j]
         for i in range(0, len(dates)):
-            if timestep == 'Monthly':
-                row_dict = {fieldnames[0]: values[0][i][0]/1000, fieldnames[1]: datetime.strptime(dates[i], '%b %y').strftime('%-m/%Y')}
-            else:
-                row_dict = {fieldnames[0]: values[0][i][0]/1000, fieldnames[1]: datetime.strptime(dates[i], '%b %d, %Y').strftime('%-m/%d/%Y')}
-            for j in range(0,len(parameters)):
-                param = parameters[j]
-                row_dict[param] = values[j][i][1]
-            writer.writerow(row_dict)
+            value_list.append(values[str(j)][i][1])
+        d[param] = value_list
 
+    df = pd.DataFrame(data=d)
+
+    df.to_csv(csv_path, sep=',', index=False)
+    return file_dict
 
 def write_ascii(watershed, streamID, parameters, dates, values, timestep):
     ascii_path = os.path.join(temp_workspace, 'swat_data.txt')
@@ -613,7 +641,6 @@ def nasaaccess_run(id, functions, watershed, start, end, email):
     tempdir = os.path.join(nasaaccess_temp, id)
     os.makedirs(tempdir, 0777)
     cwd = os.getcwd()
-    print(cwd)
 
     os.chdir(tempdir)
 

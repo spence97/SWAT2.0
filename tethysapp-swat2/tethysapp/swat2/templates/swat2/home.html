@@ -30,6 +30,10 @@
     <br>
     <h5>Select Watershed</h5>
       {%gizmo watershed_select %}
+    <div id="std_view" class="btn-group" role="group">
+        <a class="btn btn-success" role="button" id="std_view">
+            <span class="glyphicon glyphicon-sunglasses"></span>&nbsp;&nbsp;View Summary Data</a>
+    </div>
     <br>
     <h5>Toggle Layers</h5>
     <div class="basinToggle">
@@ -50,10 +54,15 @@
           <input type="radio" class="radio" name="options" id="noneOption" autocomplete="off" checked> None
         </label>
     </div>
+    <br>
+    <br>
+    <div id="legend_container"></div>
+
+
 {% endblock %}
 
 {% block app_content %}
-  <div id="map" class="map"></div>
+        <div id="map" class="map"></div>
 {% endblock %}
 
 {# Use the after_app_content block for modals #}
@@ -71,6 +80,7 @@
               <li role="presentation" id="lulc_link"><a id="lulc_tab_link" href="#lulc_tab" aria-controls="lulc_tab" role="tab" data-toggle="tab">LULC Data</a></li>
               <li role="presentation" id="soil_link"><a id="soil_tab_link" href="#soil_tab" aria-controls="soil_tab" role="tab" data-toggle="tab">Soil Data</a></li>
               <li role="presentation" id="nasaaccess_link"><a id="nasaaccess_tab_link" href="#nasaaccess_tab" aria-controls="nasaaccess_tab" role="tab" data-toggle="tab">nasaaccess</a></li>
+              <li role="presentation" id="datacart_link"><a id="datacart_tab_link" href="#datacart_tab" aria-controls="datacart_tab" role="tab" data-toggle="tab">Data Cart</a></li>
           </ul>
 
           <!--Tab Panes-->
@@ -79,6 +89,9 @@
               <div class="panel-body">
                 <h6 id="error" class="hidden"></h6>
                 <div class="left">
+                    <div class="alert alert-success hidden" id="rch_save_success">
+                        <strong>Success!</strong> This data has been saved to your cart.
+                    </div>
                     <div class="queryItems">
                         <div id="rch_var_picker" class="var_picker">
                             {% gizmo rch_var_select %}
@@ -109,6 +122,9 @@
               <div class="panel-body">
                 <h6 id="error" class="hidden"></h6>
                 <div class="left">
+                    <div class="alert alert-success hidden" id="sub_save_success">
+                        <strong>Success!</strong> This data has been saved to your cart.
+                    </div>
                     <div class="queryItems">
                         <div id="sub_var_picker" class="var_picker">
                             {% gizmo sub_var_select %}
@@ -130,15 +146,41 @@
                 </div>
               </div>
             </div>
+            <div role="tabpanel" class="tab-pane" id="hru_tab">
+              <div class="panel-body">
+                <h6 id="error" class="hidden"></h6>
+                <div class="left">
+                    <h1>COMING SOON</h1>
+                    <br>
+                    <div id="hru_chart_container" class="view_chart hidden"></div>
+                    <div class="flex-container-row"><img id="view-hru-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
+                </div>
+                <div class="right">
+                  <div id="hru_map" class="hru_map"></div>
+                </div>
+              </div>
+            </div>
             <div role="tabpanel" class="tab-pane" id="lulc_tab">
               <div class="panel-body">
                 <div id="lulc_data_container" class="lulc_data_container">
-                  <div class="flex-container-row"><img id="view-pie-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
+                  <div class="flex-container-row"><img id="lulc-pie-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
                   <h6 id="error" class="hidden"></h6>
                   <div id="lulcPieContainer" class="view_chart hidden"></div>
                 </div>
                 <div id="lulc_map_container" class="lulc_map_container">
                   <div id="lulc_map" class="lulc_map"></div>
+                </div>
+              </div>
+            </div>
+            <div role="tabpanel" class="tab-pane" id="soil_tab">
+              <div class="panel-body">
+                <div id="soil_data_container" class="soil_data_container">
+                  <div class="flex-container-row"><img id="soil-pie-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
+                  <h6 id="error" class="hidden"></h6>
+                  <div id="soilPieContainer" class="view_chart hidden"></div>
+                </div>
+                <div id="soil_map_container" class="soil_map_container">
+                  <div id="soil_map" class="soil_map"></div>
                 </div>
               </div>
             </div>
@@ -192,7 +234,27 @@
                 </div>
               </div>
             </div>
+            <div role="tabpanel" class="tab-pane" id="datacart_tab">
+                <div class="panel-body">
+                    <div id="cart_table_container">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Data Type</th>
+                                    <th>Parameters</th>
+                                    <th>Time Step</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
           </div>
+
 
           <!--<div class="flex-container-row"><img id="view-file-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>-->
           <!--<h6 id="error" class="hidden"></h6>-->
@@ -209,26 +271,54 @@
                 <!--<span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Download ASCII</a>-->
             <!--</div>-->
             <div id="rch_compute" class="btn-group" role="group">
-              <a class="btn btn-success" role="button" id="rch_compute">
+              <a class="btn btn-primary" role="button" id="rch_compute">
                 <span class="glyphicon glyphicon-sunglasses"></span>&nbsp;&nbsp;Get RCH Data</a>
             </div>
             <div id="sub_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-success" role="button" id="sub_compute">
+              <a class="btn btn-primary" role="button" id="sub_compute">
                 <span class="glyphicon glyphicon-ice-lolly-tasted"></span>&nbsp;&nbsp;Get SUB Data</a>
             </div>
             <div id="hru_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-success" role="button" id="hru_extract">
-                <span class="glyphicon glyphicon-piggy-bank"></span>&nbsp;&nbsp;Get HRU Data</a>
+              <a class="btn btn-primary" role="button" id="hru_extract">
+                <span class="glyphicon glyphicon-leaf"></span>&nbsp;&nbsp;Get HRU Data</a>
             </div>
             <div id="lulc_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-success" role="button" id="lulc_comp">
+              <a class="btn btn-primary" role="button" id="lulc_comp">
                 <span class="glyphicon glyphicon-tree-deciduous"></span>&nbsp;&nbsp;Compute LULC Statistics</a>
             </div>
             <div id="soil_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-success" role="button" id="soil_comp">
-                <span class="glyphicon glyphicon-oil"></span>&nbsp;&nbsp;Compute Soil Statistics</a>
+              <a class="btn btn-primary" role="button" id="soil_comp">
+                <span class="glyphicon glyphicon-grain"></span>&nbsp;&nbsp;Compute Soil Statistics</a>
+            </div>
+            <div id="saveData" class="btn-group hidden" role="group">
+              <a class="btn btn-success" role="button" id="saveData">
+                <span class="glyphicon glyphicon-shopping-cart"></span>&nbsp;&nbsp;Add Data to Cart</a>
+            </div>
+            <div id="downloadData" class="btn-group hidden" role="group">
+              <a class="btn btn-primary" role="button" id="downloadData">
+                <span class="glyphicon glyphicon-download"></span>&nbsp;&nbsp;Download Data</a>
             </div>
           </div>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Watershed Summary Modal -->
+  <div class="modal fade" id="summary-modal" tabindex="-1" role="dialog" aria-labelledby="summary-modal-label">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+          <div id="tabs" class="modal-body">
+            <!-- Nav tabs -->
+              <ul class="nav nav-tabs" role="tablist">
+                  <li role="presentation" id="overview_link" class = "active"><a id="overview_tab_link" href="#overview_tab" aria-controls="overview_tab" role="tab" data-toggle="tab">Overview</a></li>
+                  <li role="presentation" id="annsum_link"><a id="annsum_tab_link" href="#annsum_tab" aria-controls="annsub_tab" role="tab" data-toggle="tab">Annual Summary</a></li>
+                  <!--<li role="presentation" id="annsum_link"><a id="annsum_tab_link" href="#annsum_tab" aria-controls="annsub_tab" role="tab" data-toggle="tab">Annual Summary</a></li>-->
+              </ul>
+          </div>
+        <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
         </div>

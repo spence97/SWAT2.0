@@ -95,7 +95,7 @@ rch_param_vals = ['', 'RCH', 'GIS', 'MON', 'AREAkm2', 'FLOW_INcms', 'FLOW_OUTcms
 
 
 sub_options = [('Precipitation (mm)', 'PRECIPmm'),
-                ('Snow Melt (mm)', 'SNOMELT'),
+                ('Snow Melt (mm)', 'SNOMELTmm'),
                 ('Potential Evapotranspiration (mm)', 'PETmm'),
                 ('Evapotranspiration (mm)', 'ETmm'),
                 ('Soil Water Content (mm)', 'SWmm'),

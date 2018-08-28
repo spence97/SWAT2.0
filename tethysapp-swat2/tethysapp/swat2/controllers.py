@@ -11,9 +11,8 @@ def home(request):
     """
     # Get available watersheds (with rch data and wms capabilities) and set select_watershed options
 
-    rch_path = os.path.join(data_path)
     watershed_options = []
-    watershed_list = os.listdir(rch_path)
+    watershed_list = os.listdir(data_path)
     for f in watershed_list:
         if f.startswith('.'):
             pass
