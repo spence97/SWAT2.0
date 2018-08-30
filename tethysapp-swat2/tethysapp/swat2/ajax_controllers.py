@@ -1,7 +1,7 @@
 import os, json
 from .model import *
 from .config import data_path, temp_workspace
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 
 def get_upstream(request):
     """
@@ -11,7 +11,8 @@ def get_upstream(request):
     streamID = request.POST.get('streamID')
     unique_id = request.POST.get('id')
     unique_path = os.path.join(temp_workspace, unique_id)
-    os.makedirs(unique_path, 0777)
+    if not os.path.exists(unique_path):
+        os.makedirs(unique_path, 0777)
 
     upstreams = get_upstreams(watershed, streamID)
 
@@ -28,9 +29,10 @@ def save_json(request):
     srs = 'EPSG:'
     srs += upstream_json['crs']['properties']['name'].split(':')[-1]
     unique_id = upstream_json['uniqueId']
+    outletID = upstream_json['outletID']
     feature_type = upstream_json['featureType']
     unique_path = os.path.join(temp_workspace, unique_id)
-    with open(unique_path + '/' + feature_type + '_upstream.json', 'w') as outfile:
+    with open(unique_path + '/' + feature_type + '_upstream_' + outletID + '.json', 'w') as outfile:
         json.dump(upstream_json, outfile)
 
     json_dict = JsonResponse({'id': unique_id, 'bbox': bbox, 'srs': srs})
@@ -69,12 +71,14 @@ def coverage_compute(request):
     """
     Controller for clipping the lulc file to the upstream catchment boundary and running coverage statistics
     """
-    unique_id = request.POST.get('userId')
+    uniqueID = request.POST.get('userID')
+    outletID = str(request.POST.get('outletID'))
+    print(outletID)
     watershed = request.POST.get('watershed')
     raster_type = request.POST.get('raster_type')
-    clip_raster(unique_id, raster_type)
-    lulc_dict = coverage_stats(watershed, unique_id, raster_type)
-    json_dict = JsonResponse(lulc_dict)
+    clip_raster(watershed, uniqueID, outletID, raster_type)
+    coverage_dict = coverage_stats(watershed, uniqueID, outletID, raster_type)
+    json_dict = JsonResponse(coverage_dict)
     return(json_dict)
 
 def save_file(request):
@@ -82,3 +86,20 @@ def save_file(request):
     file_dict = write_csv(data_json)
     json_dict = JsonResponse(file_dict)
     return json_dict
+
+def download_files(request):
+    if request.method == 'POST':
+        uniqueID = request.POST['userID']
+
+        data_dir = os.path.join(temp_workspace, uniqueID)
+
+        zipfolder(data_dir, data_dir)
+
+        path_to_file = os.path.join(temp_workspace, uniqueID + '.zip')
+        print(path_to_file)
+        f = open(path_to_file, 'r')
+        myfile = File(f)
+
+        response = HttpResponse(myfile, content_type='application/zip')
+        response['Content-Disposition'] = 'attachment; filename=' + uniqueID + '.zip'
+        return response

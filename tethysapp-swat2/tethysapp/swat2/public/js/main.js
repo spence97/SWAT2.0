@@ -54,6 +54,7 @@ var LIBRARY_OBJECT = (function() {
         init_events,
         get_time_series,
         add_to_cart,
+        download,
         lulc_compute,
         soil_compute,
         get_upstream,
@@ -446,7 +447,7 @@ var LIBRARY_OBJECT = (function() {
 
                 var wms_url = current_layer.getSource().getGetFeatureInfoUrl(evt.coordinate, viewResolution, view.getProjection(), {'INFO_FORMAT': 'application/json'}); //Get the wms url for the clicked point
                 if (wms_url) {
-                    sessionStorage.setItem('userId', Math.random().toString(36).substr(2,5))
+
                     //Retrieving the details for clicked point via the url
                     $.ajax({
                         type: "GET",
@@ -615,6 +616,7 @@ var LIBRARY_OBJECT = (function() {
             var upstreamJson = data;
             upstreamJson['uniqueId'] = sessionStorage.userId
             upstreamJson['featureType'] = 'reach'
+            upstreamJson['outletID'] = sessionStorage.streamID
             $.ajax({
                 type: 'POST',
                 url: "/apps/swat2/save_json/",
@@ -635,6 +637,8 @@ var LIBRARY_OBJECT = (function() {
                     rch_map.updateSize();
                     rch_map.getView().fit(sessionStorage.streamExtent.split(',').map(Number), rch_map.getSize());
 
+                    var newrow = '<tr><td>reach_upstream</td><td>JSON</td><td>' + sessionStorage.streamID + '</td></tr>'
+                    $('#tBodySpatial').append(newrow);
                 }
             })
         })
@@ -642,6 +646,7 @@ var LIBRARY_OBJECT = (function() {
             var upstreamJson = data;
             upstreamJson['uniqueId'] = sessionStorage.userId
             upstreamJson['featureType'] = 'basin'
+            upstreamJson['outletID'] = sessionStorage.streamID
             $.ajax({
                 type: 'POST',
                 url: "/apps/swat2/save_json/",
@@ -669,6 +674,10 @@ var LIBRARY_OBJECT = (function() {
                     soil_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), soil_map.getSize());
                     nasaaccess_map.updateSize();
                     nasaaccess_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), nasaaccess_map.getSize());
+
+
+                    var newrow = '<tr><td>basin_upstream</td><td>JSON</td><td>' + sessionStorage.streamID + '</td></tr>'
+                    $('#tBodySpatial').append(newrow);
 
                 }
             })
@@ -1113,10 +1122,10 @@ var LIBRARY_OBJECT = (function() {
             success: function(result){
                 console.log(result)
                 var fileType = result.FileType
-                var newrow = '<tr>' + '<td>' + result.FileType + '</td><td>' + result.Parameters + '</td><td>' +
+                var newrow = '<tr><td>' + result.FileType + '</td><td>' + result.Parameters + '</td><td>' +
                                 result.TimeStep + '</td><td>' + result.Start + '</td><td>' +
-                                result.End + '</td></tr>'
-                $('#tbody').append(newrow);
+                                result.End + '</td><td>' + result.StreamID + '</td></tr>'
+                $('#tBodyTS').append(newrow);
                 if (fileType === 'rch') {
                     $('#rch_save_success').removeClass('hidden')
                     setTimeout(function () {
@@ -1134,18 +1143,28 @@ var LIBRARY_OBJECT = (function() {
         });
     };
 
+//    download = function() {
+//        $.ajax({
+//            type: 'POST',
+//            url:"/apps/swat2/download_files/",
+//            data: {'uniqueID': sessionStorage.userId}
+//        })
+//    }
+
 
 
     soil_compute = function(){
         var watershed = $('#watershed_select option:selected').val()
-        var userId = sessionStorage.userId
+        var userID = sessionStorage.userId
+        var outletID = sessionStorage.streamID
         var rasterType = 'soil'
 
         $.ajax({
             type: 'POST',
             url: "/apps/swat2/coverage_compute/",
             data: {
-                'userId': userId,
+                'userID': userID,
+                'outletID': outletID,
                 'watershed': watershed,
                 'raster_type': rasterType
                 },
@@ -1194,7 +1213,7 @@ var LIBRARY_OBJECT = (function() {
                     }]
                 });
 //            add the clipped lulc raster for the selected watershed
-                var store = 'upstream_soil_' + userId
+                var store = watershed + '_upstream_soil_' + outletID
                 var store_id = 'swat:' + store
 
                 //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
@@ -1229,7 +1248,8 @@ var LIBRARY_OBJECT = (function() {
                                                                   })
                                         })
                 upstreamOverlaySubbasin.setStyle(hollow_style)
-
+                var newrow = '<tr>><td>soil</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
+                $('#tBodySpatial').append(newrow);
 
             }
         });
@@ -1237,14 +1257,16 @@ var LIBRARY_OBJECT = (function() {
 
     lulc_compute = function(){
         var watershed = $('#watershed_select option:selected').val()
-        var userId = sessionStorage.userId
+        var userID = sessionStorage.userId
+        var outletID = sessionStorage.streamID
         var rasterType = 'lulc'
 
         $.ajax({
             type: 'POST',
             url: "/apps/swat2/coverage_compute/",
             data: {
-                'userId': userId,
+                'userID': userID,
+                'outletID': outletID,
                 'watershed': watershed,
                 'raster_type': rasterType
                 },
@@ -1317,7 +1339,7 @@ var LIBRARY_OBJECT = (function() {
                     }
                 });
 //            add the clipped lulc raster for the selected watershed
-                var store = 'upstream_lulc_' + userId
+                var store = watershed + '_upstream_lulc_' + outletID
                 var store_id = 'swat:' + store
 
                 //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
@@ -1352,6 +1374,8 @@ var LIBRARY_OBJECT = (function() {
                                                                   })
                                         })
                 upstreamOverlaySubbasin.setStyle(hollow_style)
+                var newrow = '<tr>><td>lulc</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
+                $('#tBodySpatial').append(newrow);
             }
 
         })
@@ -1481,6 +1505,8 @@ var LIBRARY_OBJECT = (function() {
     // the DOM tree finishes loading
 
     $(function() {
+        sessionStorage.setItem('userId', Math.random().toString(36).substr(2,5))
+        $('input[name=userID]').val(sessionStorage.userId)
         init_all();
         cart = []
         sessionStorage.setItem('cart', JSON.stringify(cart))
@@ -1557,6 +1583,10 @@ var LIBRARY_OBJECT = (function() {
         $("#saveData").click(function(){
             add_to_cart();
         })
+
+//        $("#downloadData").click(function(){
+//            download();
+//        })
     })
     return public_interface;
 

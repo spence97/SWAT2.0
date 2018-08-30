@@ -11,7 +11,7 @@ class Swat2(TethysAppBase):
     icon = 'swat2/images/logo.png'
     package = 'swat2'
     root_url = 'swat2'
-    color = '#42f498'
+    color = '#af2300'
     description = 'Application to access and analyse inputs and outputs of the Soil and Water Assessment Tool (SWAT)'
     tags = '&quot;Hydrology&quot;, &quot;Soil&quot;, &quot;Water&quot;, &quot;Timeseries&quot;'
     enable_feedback = False
@@ -53,6 +53,11 @@ class Swat2(TethysAppBase):
                 name='save_file',
                 url='swat2/save_file',
                 controller='swat2.ajax_controllers.save_file'
+            ),
+            UrlMap(
+                name='download_files',
+                url='swat2/download_files',
+                controller='swat2.ajax_controllers.download_files'
             ),
         )
 

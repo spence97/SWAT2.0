@@ -197,3 +197,31 @@
     top: 48%;
     left: 48%;
 }
+
+#tsData {
+    border-collapse: collapse;
+}
+
+#spatialData {
+    border-collapse: collapse;
+}
+
+#tsData td, #tsData th {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+#spatialData td, #spatialData th {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+}
+
+#tsData th {
+    background-color: #ff7272;
+}
+
+#spatialData th {
+    background-color: #5aa3e8;
+}

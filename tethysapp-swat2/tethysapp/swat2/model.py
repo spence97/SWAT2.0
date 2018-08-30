@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.files import File
 from tethys_sdk.services import get_spatial_dataset_engine
 from .config import temp_workspace, data_path, geoserver, watershed_xml_path, WORKSPACE, GEOSERVER_URI, nasaaccess_path, nasaaccess_temp
 from .outputs_config import *
@@ -13,7 +14,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import xml.etree.cElementTree as ET
-import os, subprocess, requests, smtplib, fiona, json
+import os, subprocess, requests, smtplib, fiona, json, zipfile
 
 def extract_monthly_rch(watershed, start, end, parameters, reachid):
 
@@ -258,10 +259,10 @@ def get_upstreams(watershed, streamID):
     return upstreams
 
 
-def write_shapefile(id):
-    json_path = os.path.join(temp_workspace, id)
+def write_shapefile(watershed, uniqueID, streamID):
+    json_path = os.path.join(temp_workspace, uniqueID)
 
-    upstream_json = json.loads(open(json_path + '/basin_upstream.json').read())
+    upstream_json = json.loads(open(json_path + '/basin_upstream' + streamID + '.json').read())
 
     coords = []
 
@@ -274,23 +275,23 @@ def write_shapefile(id):
     shapefile_path = os.path.join(temp_workspace, id, 'shapefile')
     os.makedirs(shapefile_path, 0777)
 
-    shapefile_path = shapefile_path + '/basin_upstream.shp'
+    shapefile_path = shapefile_path + '/basin_upstream' + streamID + '.shp'
 
     schema = {'geometry': 'Polygon', 'properties': {'watershed': 'str:50'}}
     with fiona.open(shapefile_path, 'w', 'ESRI Shapefile', schema) as layer:
-        layer.write({'geometry': new_json, 'properties': {'watershed': 'Lower Mekong'}})
+        layer.write({'geometry': new_json, 'properties': {'watershed': watershed}})
 
 
-def clip_raster(id, raster_type):
-    input_json = os.path.join(temp_workspace, id, 'basin_upstream.json')
-    input_tif = os.path.join(data_path, 'lower_mekong', raster_type + '.tif')
-    output_tif = os.path.join(temp_workspace, id, 'upstream_'+ raster_type + '_' + id + '.tif')
+def clip_raster(watershed, uniqueID, outletID, raster_type):
+    input_json = os.path.join(temp_workspace, uniqueID, 'basin_upstream_' + outletID + '.json')
+    input_tif = os.path.join(data_path, watershed, raster_type + '.tif')
+    output_tif = os.path.join(temp_workspace, uniqueID, watershed + '_upstream_'+ raster_type + '_' + outletID + '.tif')
 
     subprocess.call(
         'gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES -cutline {0} -crop_to_cutline -dstalpha {1} {2}'.format(input_json, input_tif, output_tif),
         shell=True)
 
-    storename = 'upstream_' + raster_type + '_' + id
+    storename = watershed + '_upstream_' + raster_type + '_' + outletID
     headers = {'Content-type': 'image/tiff', }
     user = geoserver['user']
     password = geoserver['password']
@@ -302,8 +303,8 @@ def clip_raster(id, raster_type):
     requests.put(request_url, verify=False, headers=headers, data=data, auth=(user, password))
 
 
-def coverage_stats(watershed, id, raster_type):
-    tif_path = temp_workspace + '/' + str(id) + '/upstream_' + str(raster_type) + '_' + str(id) + '.tif'
+def coverage_stats(watershed, uniqueID, outletID, raster_type):
+    tif_path = temp_workspace + '/' + str(uniqueID) + '/' + watershed + '_upstream_' + str(raster_type) + '_' + str(outletID) + '.tif'
     ds = gdal.Open(tif_path)
     band = ds.GetRasterBand(1)
     array = np.array(band.ReadAsArray())
@@ -438,14 +439,14 @@ def write_csv(data):
     end = ''
 
     if timestep == 'Monthly':
-        start = datetime.strptime(dates[0], '%b %y').strftime('%-m%Y')
-        end = datetime.strptime(dates[-1], '%b %y').strftime('%-m%Y')
+        start = datetime.strptime(dates[0], '%b %y').strftime('%m%Y')
+        end = datetime.strptime(dates[-1], '%b %y').strftime('%m%Y')
     elif timestep == 'Daily':
-        start = datetime.strptime(dates[0], '%b %d, %Y').strftime('%-m%d%Y')
-        end = datetime.strptime(dates[-1], '%b %d, %Y').strftime('%-m%d%Y')
+        start = datetime.strptime(dates[0], '%b %d, %Y').strftime('%m%d%Y')
+        end = datetime.strptime(dates[-1], '%b %d, %Y').strftime('%m%d%Y')
 
-    file_name = watershed + '_' + file_type + streamID + '_' + param_str_low + '_' + start + '-' + end
-    file_dict = {'Parameters': param_str, 'Start': start, 'End': end, 'FileType': file_type, 'TimeStep': timestep}
+    file_name = watershed + '_' + file_type + streamID + '_' + param_str_low + '_' + start + 'to' + end
+    file_dict = {'Parameters': param_str, 'Start': start, 'End': end, 'FileType': file_type, 'TimeStep': timestep, 'StreamID': streamID}
 
     csv_path = os.path.join(temp_workspace, unique_id, file_name + '.csv')
 
@@ -524,6 +525,14 @@ def write_ascii(watershed, streamID, parameters, dates, values, timestep):
         for j in range(0, len(parameters)):
             row_str += str(values[j][i][1]).ljust(len(head_str_parts[j + 2]) + 3, ' ')
         f.write(row_str + '\n')
+
+def zipfolder(zip_name, data_dir):
+    zipobj = zipfile.ZipFile(zip_name + '.zip', 'w', zipfile.ZIP_DEFLATED)
+    rootlen = len(data_dir) + 1
+    for base, dirs, files in os.walk(data_dir):
+        for file in files:
+            fn = os.path.join(base, file)
+            zipobj.write(fn, fn[rootlen:])
 
 
 def write_xml(id):
