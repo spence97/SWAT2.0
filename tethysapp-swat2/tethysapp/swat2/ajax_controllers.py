@@ -1,6 +1,6 @@
 import os, json
 from .model import *
-from .config import data_path, temp_workspace
+from .config import temp_workspace
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 
 def get_upstream(request):

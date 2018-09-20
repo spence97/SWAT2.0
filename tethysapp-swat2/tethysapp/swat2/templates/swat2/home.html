@@ -30,10 +30,6 @@
     <br>
     <h5>Select Watershed</h5>
       {%gizmo watershed_select %}
-    <div id="std_view" class="btn-group" role="group">
-        <a class="btn btn-success" role="button" id="std_view">
-            <span class="glyphicon glyphicon-sunglasses"></span>&nbsp;&nbsp;View Summary Data</a>
-    </div>
     <br>
     <h5>Toggle Layers</h5>
     <div class="basinToggle">
@@ -74,9 +70,9 @@
         <div id="tabs" class="modal-body">
           <!-- Nav tabs -->
           <ul class="nav nav-tabs" role="tablist">
-              <li role="presentation" id="rch_link" class = "active"><a id="rch_tab_link" href="#rch_tab" aria-controls="rch_tab" role="tab" data-toggle="tab">Reach Data</a></li>
-              <li role="presentation" id="sub_link"><a id="sub_tab_link" href="#sub_tab" aria-controls="sub_tab" role="tab" data-toggle="tab">Subbasin Data</a></li>
-              <li role="presentation" id="hru_link"><a id="hru_tab_link" href="#hru_tab" aria-controls="hru_tab" role="tab" data-toggle="tab">HRU Data</a></li>
+              <li role="presentation" id="rch_link" class = "active"><a id="rch_tab_link" href="#rch_tab" aria-controls="rch_tab" role="tab" data-toggle="tab">RCH Model Outputs</a></li>
+              <li role="presentation" id="sub_link"><a id="sub_tab_link" href="#sub_tab" aria-controls="sub_tab" role="tab" data-toggle="tab">Sub Model Outputs</a></li>
+              <li role="presentation" id="hru_link"><a id="hru_tab_link" href="#hru_tab" aria-controls="hru_tab" role="tab" data-toggle="tab">HRU Model Outputs</a></li>
               <li role="presentation" id="lulc_link"><a id="lulc_tab_link" href="#lulc_tab" aria-controls="lulc_tab" role="tab" data-toggle="tab">LULC Data</a></li>
               <li role="presentation" id="soil_link"><a id="soil_tab_link" href="#soil_tab" aria-controls="soil_tab" role="tab" data-toggle="tab">Soil Data</a></li>
               <li role="presentation" id="nasaaccess_link"><a id="nasaaccess_tab_link" href="#nasaaccess_tab" aria-controls="nasaaccess_tab" role="tab" data-toggle="tab">nasaaccess</a></li>
@@ -294,15 +290,15 @@
             <!--</div>-->
             <div id="rch_compute" class="btn-group" role="group">
               <a class="btn btn-primary" role="button" id="rch_compute">
-                <span class="glyphicon glyphicon-sunglasses"></span>&nbsp;&nbsp;Get RCH Data</a>
+                <span class="glyphicon glyphicon-open-file"></span>&nbsp;&nbsp;Get RCH Data</a>
             </div>
             <div id="sub_compute" class="btn-group hidden" role="group">
               <a class="btn btn-primary" role="button" id="sub_compute">
-                <span class="glyphicon glyphicon-ice-lolly-tasted"></span>&nbsp;&nbsp;Get SUB Data</a>
+                <span class="glyphicon glyphicon-open-file"></span>&nbsp;&nbsp;Get SUB Data</a>
             </div>
             <div id="hru_compute" class="btn-group hidden" role="group">
               <a class="btn btn-primary" role="button" id="hru_extract">
-                <span class="glyphicon glyphicon-leaf"></span>&nbsp;&nbsp;Get HRU Data</a>
+                <span class="glyphicon glyphicon-open-file"></span>&nbsp;&nbsp;Get HRU Data</a>
             </div>
             <div id="lulc_compute" class="btn-group hidden" role="group">
               <a class="btn btn-primary" role="button" id="lulc_comp">

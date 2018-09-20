@@ -18,7 +18,7 @@ import os, subprocess, requests, smtplib, fiona, json, zipfile
 
 def extract_monthly_rch(watershed, start, end, parameters, reachid):
 
-    monthly_rch_path = os.path.join(data_path, watershed, 'output_monthly.rch')
+    monthly_rch_path = os.path.join(data_path, watershed, 'Outputs', 'output_monthly.rch')
 
     dt_start = datetime.strptime(start, '%B %Y')
     dt_end = datetime.strptime(end, '%B %Y')
@@ -105,7 +105,7 @@ def extract_monthly_rch(watershed, start, end, parameters, reachid):
 
 def extract_daily_rch(watershed, start, end, parameters, reachid):
 
-    daily_rch_path = os.path.join(data_path, watershed, 'output_daily.rch')
+    daily_rch_path = os.path.join(data_path, watershed, 'Outputs', 'output_daily.rch')
 
     param_vals = ['']
     with open(daily_rch_path) as f:
@@ -181,7 +181,7 @@ def extract_daily_rch(watershed, start, end, parameters, reachid):
     return rchDict
 
 def extract_sub(watershed, start, end, parameters, subid):
-    sub_path = os.path.join(data_path, watershed, 'output.sub')
+    sub_path = os.path.join(data_path, watershed, 'Outputs', 'output.sub')
 
     dt_start = datetime.strptime(start, '%B %d, %Y')
     dt_end = datetime.strptime(end, '%B %d, %Y')
@@ -244,7 +244,7 @@ def extract_sub(watershed, start, end, parameters, subid):
 
 
 def get_upstreams(watershed, streamID):
-    dbf_path = os.path.join(data_path, watershed, 'Reach.dbf')
+    dbf_path = os.path.join(data_path, watershed, 'Watershed', 'Reach.dbf')
     upstreams = [int(streamID)]
     temp_upstreams = [int(streamID)]
     table = DBF(dbf_path, load=True)
@@ -284,7 +284,7 @@ def write_shapefile(watershed, uniqueID, streamID):
 
 def clip_raster(watershed, uniqueID, outletID, raster_type):
     input_json = os.path.join(temp_workspace, uniqueID, 'basin_upstream_' + outletID + '.json')
-    input_tif = os.path.join(data_path, watershed, raster_type + '.tif')
+    input_tif = os.path.join(data_path, watershed, 'Land', raster_type + '.tif')
     output_tif = os.path.join(temp_workspace, uniqueID, watershed + '_upstream_'+ raster_type + '_' + outletID + '.tif')
 
     subprocess.call(
@@ -297,10 +297,16 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
     password = geoserver['password']
     data = open(output_tif, 'rb').read()
 
-    request_url = '{0}workspaces/{1}/coveragestores/{2}/file.geotiff'.format(geoserver['rest_url'],
-                                                                             geoserver['workspace'], storename)
 
-    requests.put(request_url, verify=False, headers=headers, data=data, auth=(user, password))
+    geoserver_engine = get_spatial_dataset_engine(name='ADPC')
+    response = geoserver_engine.get_layer(storename, debug=True)
+    if response['success'] == False:
+        request_url = '{0}workspaces/{1}/coveragestores/{2}/file.geotiff'.format(geoserver['rest_url'],
+                                                                                 geoserver['workspace'], storename)
+
+        requests.put(request_url, verify=False, headers=headers, data=data, auth=(user, password))
+    else:
+        print('layer already exists')
 
 
 def coverage_stats(watershed, uniqueID, outletID, raster_type):
@@ -312,7 +318,7 @@ def coverage_stats(watershed, uniqueID, outletID, raster_type):
     unique, counts = np.unique(array, return_counts=True)
     unique_dict = dict(zip(unique, counts))
 
-    color_key_path = os.path.join(data_path, watershed, raster_type + '_info.txt')
+    color_key_path = os.path.join(data_path, watershed, 'Land', raster_type + '_info.txt')
     nodata_values = []
     with open(color_key_path) as f:
         for line in f:
@@ -644,7 +650,7 @@ def write_xml(id):
 
 def nasaaccess_run(id, functions, watershed, start, end, email):
     shp_path = os.path.join(temp_workspace, id, 'upstream.shp')
-    dem_path = os.path.join(data_path, watershed, 'dem.tif')
+    dem_path = os.path.join(data_path, watershed, 'Land', 'dem.tif')
     unique_path = os.path.join(nasaaccess_path, 'outputs', id, 'nasaaccess_data')
     os.makedirs(unique_path, 0777)
     tempdir = os.path.join(nasaaccess_temp, id)
