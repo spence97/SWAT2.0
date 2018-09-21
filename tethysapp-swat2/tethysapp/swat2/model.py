@@ -333,8 +333,7 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
 
     subprocess.call(
         'gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES -cutline {0} -crop_to_cutline -dstalpha {1} {2}'
-            .format(input_json, input_tif, output_tif),
-        shell=True)
+            .format(input_json, input_tif, output_tif), shell=True)
 
     storename = watershed + '_upstream_' + raster_type + '_' + outletID
     headers = {'Content-type': 'image/tiff', }
