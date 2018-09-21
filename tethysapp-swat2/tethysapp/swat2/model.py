@@ -52,7 +52,13 @@ def extract_monthly_rch(watershed, start, end, parameters, reachid):
 
 
 
-    rchDict = {'Watershed': watershed, 'Dates': daterange_str, 'ReachID': reachid, 'Parameters': parameters, 'Values':{}, 'Names': [], 'Timestep': 'Monthly', 'FileType': 'rch'}
+    rchDict = {'Watershed': watershed,
+               'Dates': daterange_str,
+               'ReachID': reachid,
+               'Parameters': parameters,
+               'Values':{}, 'Names': [],
+               'Timestep': 'Monthly',
+               'FileType': 'rch'}
     for x in range(0,len(parameters)):
         param_index = rch_param_vals.index(parameters[x])
         param_name = rch_param_names[parameters[x]]
@@ -143,7 +149,14 @@ def extract_daily_rch(watershed, start, end, parameters, reachid):
     daterange_str = [d.strftime('%b %d, %Y') for d in daterange]
     daterange_mil = [int(d.strftime('%s')) * 1000 for d in daterange]
 
-    rchDict = {'Watershed': watershed, 'Dates': daterange_str, 'ReachID': reachid, 'Parameters': parameters, 'Values': {}, 'Names': [], 'Timestep': 'Daily', 'FileType': 'rch'}
+    rchDict = {'Watershed': watershed,
+               'Dates': daterange_str,
+               'ReachID': reachid,
+               'Parameters': parameters,
+               'Values': {},
+               'Names': [],
+               'Timestep': 'Daily',
+               'FileType': 'rch'}
 
     for x in range(0, len(parameters)):
 
@@ -203,7 +216,14 @@ def extract_sub(watershed, start, end, parameters, subid):
     daterange_mil = [int(d.strftime('%s')) * 1000 for d in daterange]
 
 
-    subDict = {'Watershed': watershed, 'Dates': daterange_str, 'ReachID': subid, 'Parameters': parameters, 'Values':{}, 'Names': [], 'Timestep': 'Daily', 'FileType': 'sub'}
+    subDict = {'Watershed': watershed,
+               'Dates': daterange_str,
+               'ReachID': subid,
+               'Parameters': parameters,
+               'Values':{},
+               'Names': [],
+               'Timestep': 'Daily',
+               'FileType': 'sub'}
 
     for x in range(0, len(parameters)):
         param_index = sub_param_vals.index(parameters[x])
@@ -312,7 +332,8 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
     output_tif = os.path.join(temp_workspace, uniqueID, watershed + '_upstream_'+ raster_type + '_' + outletID + '.tif')
 
     subprocess.call(
-        'gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES -cutline {0} -crop_to_cutline -dstalpha {1} {2}'.format(input_json, input_tif, output_tif),
+        'gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES -cutline {0} -crop_to_cutline -dstalpha {1} {2}'
+            .format(input_json, input_tif, output_tif),
         shell=True)
 
     storename = watershed + '_upstream_' + raster_type + '_' + outletID
@@ -475,7 +496,12 @@ def write_csv(data):
         end = datetime.strptime(dates[-1], '%b %d, %Y').strftime('%m%d%Y')
 
     file_name = watershed + '_' + file_type + streamID + '_' + param_str_low + '_' + start + 'to' + end
-    file_dict = {'Parameters': param_str, 'Start': start, 'End': end, 'FileType': file_type, 'TimeStep': timestep, 'StreamID': streamID}
+    file_dict = {'Parameters': param_str,
+                 'Start': start,
+                 'End': end,
+                 'FileType': file_type,
+                 'TimeStep': timestep,
+                 'StreamID': streamID}
 
     csv_path = os.path.join(temp_workspace, unique_id, file_name + '.csv')
 
