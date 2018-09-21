@@ -45,6 +45,11 @@ class Swat2(TethysAppBase):
                 controller='swat2.ajax_controllers.timeseries'
             ),
             UrlMap(
+                name='get_HRUs',
+                url='swat2/get_hrus',
+                controller='swat2.ajax_controllers.get_hrus'
+            ),
+            UrlMap(
                 name='coverage_compute',
                 url='swat2/coverage_compute',
                 controller='swat2.ajax_controllers.coverage_compute'

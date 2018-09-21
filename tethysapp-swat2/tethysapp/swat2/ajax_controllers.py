@@ -22,7 +22,7 @@ def get_upstream(request):
 
 def save_json(request):
     """
-    Controller to clip soil and lulc rasters to upstream boundary and run raster calcs on clipped extents for basin statistics
+    Controller to save upstream stream and subbasin json files to user's data cart
     """
     upstream_json = json.loads(request.body)
     bbox = upstream_json['bbox']
@@ -31,11 +31,16 @@ def save_json(request):
     unique_id = upstream_json['uniqueId']
     outletID = upstream_json['outletID']
     feature_type = upstream_json['featureType']
+
     unique_path = os.path.join(temp_workspace, unique_id)
     with open(unique_path + '/' + feature_type + '_upstream_' + outletID + '.json', 'w') as outfile:
         json.dump(upstream_json, outfile)
 
     json_dict = JsonResponse({'id': unique_id, 'bbox': bbox, 'srs': srs})
+    if feature_type == 'basin':
+        watershed = upstream_json['watershed']
+        clip_raster(watershed, unique_id, outletID, 'lulc')
+        clip_raster(watershed, unique_id, outletID, 'soil')
     return json_dict
 
 
@@ -69,17 +74,30 @@ def timeseries(request):
 
 def coverage_compute(request):
     """
-    Controller for clipping the lulc file to the upstream catchment boundary and running coverage statistics
+    Controller for computing the lulc or soil coverage statistics
     """
     uniqueID = request.POST.get('userID')
     outletID = str(request.POST.get('outletID'))
     print(outletID)
     watershed = request.POST.get('watershed')
     raster_type = request.POST.get('raster_type')
-    clip_raster(watershed, uniqueID, outletID, raster_type)
+    # clip_raster(watershed, uniqueID, outletID, raster_type)
     coverage_dict = coverage_stats(watershed, uniqueID, outletID, raster_type)
     json_dict = JsonResponse(coverage_dict)
     return(json_dict)
+
+def get_hrus(request):
+    """
+    Controller for listing all HRUs that fall within a subbasin(s) boundary
+    """
+    upstreams = request.POST.get('upstreams')
+    watershed = request.POST.get('watershed')
+    upstreamIDs = list(map(int, upstreams.split(',')))
+    print(upstreamIDs)
+    hru_dict = hrus(watershed, upstreamIDs)
+    json_dict = JsonResponse(hru_dict)
+    return(json_dict)
+
 
 def save_file(request):
     data_json = json.loads(request.body)

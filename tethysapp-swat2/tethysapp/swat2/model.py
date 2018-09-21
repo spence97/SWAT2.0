@@ -242,6 +242,30 @@ def extract_sub(watershed, start, end, parameters, subid):
 
     return subDict
 
+def hrus(watershed, upstreamIDs):
+    hru_options = []
+    hru_info = {}
+    hru_path = os.path.join(data_path, watershed, 'Outputs', 'output.hru')
+    f = open(hru_path)
+    for skip_line in f:
+        if 'LULC' in skip_line:
+            break
+    for num, line in enumerate(f, 1):
+        line = line.strip()
+        columns = line.split()
+        if int(columns[3]) in upstreamIDs:
+            name_value = (columns[0] + ' (' + columns[1] + ')', columns[1])
+            hru_options.append(name_value)
+            hru_info['options'] = hru_options
+            hru_info[columns[1]]={}
+            hru_info[columns[1]]['Area_km2'] = float(columns[8])
+            hru_info[columns[1]]['LULC'] = columns[0]
+            hru_info[columns[1]]['MGMT'] = columns[4]
+            hru_info[columns[1]]['Subbasin'] = columns[3]
+        elif int(columns[3]) > max(upstreamIDs):
+            break
+    return hru_info
+
 
 def get_upstreams(watershed, streamID):
     dbf_path = os.path.join(data_path, watershed, 'Watershed', 'Reach.dbf')
@@ -296,7 +320,6 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
     user = geoserver['user']
     password = geoserver['password']
     data = open(output_tif, 'rb').read()
-
 
     geoserver_engine = get_spatial_dataset_engine(name='ADPC')
     response = geoserver_engine.get_layer(storename, debug=True)

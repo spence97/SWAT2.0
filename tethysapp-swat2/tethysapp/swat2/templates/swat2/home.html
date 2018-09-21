@@ -146,9 +146,30 @@
               <div class="panel-body">
                 <h6 id="error" class="hidden"></h6>
                 <div class="left">
-                    <h1>COMING SOON</h1>
+                    <div class="alert alert-success hidden" id="hru_save_success">
+                        <strong>Success!</strong> This data has been saved to your cart.
+                    </div>
+                    <div class="queryItems">
+                        <div id="hru_picker" class="var_picker">
+                            {% gizmo hru_select %}
+                        </div>
+                        <div id="sub_var_picker" class="var_picker">
+                            {% gizmo hru_var_select %}
+                        </div>
+                        <div id="sub_date_picker" class="date_picker">
+                            <div class="input-group input-daterange">
+                                {% gizmo hru_start_pick %}
+                                <div class="input-group-addon">to</div>
+                                {% gizmo hru_end_pick %}
+                            </div>
+                        </div>
+                        <button type="button" id="hru_list" class="btn btn-info">List HRUs</button>
+
+                    </div>
+
                     <br>
                     <div id="hru_chart_container" class="view_chart hidden"></div>
+                    <div id="hru_table_container" class="view_table hidden"></div>
                     <div class="flex-container-row"><img id="view-hru-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
                 </div>
                 <div class="right">
@@ -312,10 +333,6 @@
               <a class="btn btn-success" role="button" id="saveData">
                 <span class="glyphicon glyphicon-shopping-cart"></span>&nbsp;&nbsp;Add Data to Cart</a>
             </div>
-            <!--<div id="downloadData" class="btn-group hidden" role="group">-->
-              <!--<a class="btn btn-primary" role="button" id="downloadData">-->
-                <!--<span class="glyphicon glyphicon-download"></span>&nbsp;&nbsp;Download Data</a>-->
-            <!--</div>-->
           </div>
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>

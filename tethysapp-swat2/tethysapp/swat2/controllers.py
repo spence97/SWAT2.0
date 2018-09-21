@@ -2,7 +2,7 @@ from django.shortcuts import *
 from tethys_sdk.gizmos import *
 from .config import data_path
 from datetime import datetime
-from .outputs_config import rch_options, sub_options
+from .outputs_config import rch_options, sub_options, hru_options
 import os
 
 def home(request):
@@ -43,6 +43,12 @@ def home(request):
     sub_format = 'MM d, yyyy'
     sub_startView = 'decade'
     sub_minView = 'days'
+
+    hru_start = 'January 01, 2001'
+    hru_end = 'December 31, 2015'
+    hru_format = 'MM d, yyyy'
+    hru_startView = 'decade'
+    hru_minView = 'days'
 
     watershed_select = SelectInput(name='watershed_select',
                                    multiple=False,
@@ -95,6 +101,27 @@ def home(request):
                               initial='End Date'
                               )
 
+    hru_start_pick = DatePicker(name='hru_start_pick',
+                                autoclose=True,
+                                format=hru_format,
+                                min_view_mode=hru_minView,
+                                start_date=hru_start,
+                                end_date=hru_end,
+                                start_view=hru_startView,
+                                today_button=False,
+                                initial='Start Date')
+
+    hru_end_pick = DatePicker(name='hru_end_pick',
+                              autoclose=True,
+                              format=hru_format,
+                              min_view_mode=hru_minView,
+                              start_date=hru_start,
+                              end_date=hru_end,
+                              start_view=hru_startView,
+                              today_button=False,
+                              initial='End Date'
+                              )
+
     na_start_pick = DatePicker(name='na_start_pick',
                             autoclose=True,
                             format=na_format,
@@ -132,6 +159,21 @@ def home(request):
                                                   'allowClear': False},
                                  )
 
+    hru_var_select = SelectInput(name='hru_var_select',
+                                 multiple=True,
+                                 original=False,
+                                 options=hru_options,
+                                 select2_options={'placeholder': 'Select Variable(s)',
+                                                  'allowClear': False},
+                                 )
+
+    hru_select = SelectInput(name='hru_select',
+                             multiple=False,
+                             original=False,
+                             options=[],
+                             select2_options={'placeholder': 'Select HRU',
+                                              'allowClear': False},
+                             )
 
 
     context = {
@@ -141,9 +183,13 @@ def home(request):
         'na_end_pick': na_end_pick,
         'sub_start_pick': sub_start_pick,
         'sub_end_pick': sub_end_pick,
+        'hru_start_pick': hru_start_pick,
+        'hru_end_pick': hru_end_pick,
         'rch_var_select': rch_var_select,
         'sub_var_select': sub_var_select,
-        'watershed_select': watershed_select
+        'hru_var_select': hru_var_select,
+        'watershed_select': watershed_select,
+        'hru_select': hru_select
     }
 
     return render(request, 'swat2/home.html', context)

@@ -53,6 +53,7 @@ var LIBRARY_OBJECT = (function() {
         init_nasaaccess_map,
         init_events,
         get_time_series,
+        get_HRUs,
         add_to_cart,
         download,
         lulc_compute,
@@ -467,6 +468,20 @@ var LIBRARY_OBJECT = (function() {
                             sessionStorage.setItem('streamID', streamID)
                             var watershed = $('#watershed_select').val();
                             sessionStorage.setItem('watershed', watershed)
+                            $('#rch_tab').addClass('active');
+                            $('#sub_tab').removeClass('active');
+                            $('#hru_tab').removeClass('active');
+                            $('#lulc_tab').removeClass('active');
+                            $('#soil_tab').removeClass('active');
+                            $('#nasaaccess_tab').removeClass('active');
+                            $('#datacart_tab').removeClass('active');
+                            $('#rch_link').addClass('active');
+                            $('#sub_link').removeClass('active');
+                            $('#hru_link').removeClass('active');
+                            $('#lulc_link').removeClass('active');
+                            $('#soil_link').removeClass('active');
+                            $('#nasaaccess_link').removeClass('active');
+                            $('#datacart_link').removeClass('active');
                             $("#data-modal").modal('show');
 
                             get_upstream(reach_store_id, basin_store_id, watershed, streamID, sessionStorage.userId);
@@ -502,6 +517,7 @@ var LIBRARY_OBJECT = (function() {
             },
             success: function(data) {
                 var upstreams = data.upstreams
+                var outletID = sessionStorage.streamID
                 sessionStorage.setItem('upstreams', upstreams)
                 var cql_filter
                 if (upstreams.length > 376) {
@@ -547,6 +563,9 @@ var LIBRARY_OBJECT = (function() {
                     })
                 });
 
+                rch_map.addLayer(upstreamOverlayStream);
+                rch_map.addLayer(featureOverlayStream);
+
 
                 var basin_url = geoserver_url + 'ows?service=wfs&version=2.0.0&request=getfeature&typename=' + basin_store_id + '&CQL_FILTER=Subbasin=' + streamID + '&outputFormat=application/json&srsname=EPSG:4326&,EPSG:4326'
                 var upstream_basin_url = geoserver_url + 'ows?service=wfs&version=2.0.0&request=getfeature&typename=' + basin_store_id + '&CQL_FILTER=' + cql_filter + '&outputFormat=application/json&srsname=EPSG:4326&,EPSG:4326'
@@ -557,15 +576,15 @@ var LIBRARY_OBJECT = (function() {
                 });
 
                 var color = '#ffffff';
-                color = ol.color.asArray(color);
-                color = color.slice();
-                color[3] = .5;
+                    color = ol.color.asArray(color);
+                    color = color.slice();
+                    color[3] = 0;
 
                 upstreamOverlaySubbasin = new ol.layer.Vector({
                     source: upstreamSubbasinVectorSource,
                     style: new ol.style.Style({
                         stroke: new ol.style.Stroke({
-                            color: '#000000',
+                            color: '#cccccc',
                             width: 2
                         }),
                         fill: new ol.style.Fill({
@@ -597,15 +616,52 @@ var LIBRARY_OBJECT = (function() {
                         })
                     })
                 });
-
-                save_json(upstream_basin_url, upstream_reach_url, data);
-                rch_map.addLayer(upstreamOverlayStream);
-                rch_map.addLayer(featureOverlayStream);
                 sub_map.addLayer(upstreamOverlaySubbasin);
                 sub_map.addLayer(featureOverlaySubbasin);
+
+                save_json(upstream_basin_url, upstream_reach_url, data);
+
+                var soil_store = watershed + '_upstream_soil_' + outletID
+                var soil_store_id = 'swat:' + soil_store
+
+                //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
+                var soil_wms_source = new ol.source.ImageWMS({
+                    url: geoserver_url,
+                    params: {'LAYERS':soil_store_id, 'STYLES':'soil'},
+                    serverType: 'geoserver',
+                    crossOrigin: 'Anonymous'
+                });
+
+                upstream_soil = new ol.layer.Image({
+                    source: soil_wms_source
+                });
+
+                var lulc_store = watershed + '_upstream_lulc_' + outletID
+                var lulc_store_id = 'swat:' + lulc_store
+
+                //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
+                var lulc_wms_source = new ol.source.ImageWMS({
+                    url: geoserver_url,
+                    params: {'LAYERS':lulc_store_id, 'STYLES':'lulc'},
+                    serverType: 'geoserver',
+                    crossOrigin: 'Anonymous'
+                });
+
+                upstream_lulc = new ol.layer.Image({
+                    source: lulc_wms_source
+                });
+
+
+                hru_map.addLayer(upstream_lulc);
                 hru_map.addLayer(upstreamOverlaySubbasin);
+                lulc_map.addLayer(upstream_lulc);
                 lulc_map.addLayer(upstreamOverlaySubbasin);
+                var newrow = '<tr>><td>lulc</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
+                $('#tBodySpatial').append(newrow);
+                soil_map.addLayer(upstream_soil);
                 soil_map.addLayer(upstreamOverlaySubbasin);
+                var newrow = '<tr>><td>soil</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
+                $('#tBodySpatial').append(newrow);
                 nasaaccess_map.addLayer(upstreamOverlaySubbasin);
             }
         });
@@ -617,6 +673,7 @@ var LIBRARY_OBJECT = (function() {
             upstreamJson['uniqueId'] = sessionStorage.userId
             upstreamJson['featureType'] = 'reach'
             upstreamJson['outletID'] = sessionStorage.streamID
+            upstreamJson['watershed'] = sessionStorage.watershed
             $.ajax({
                 type: 'POST',
                 url: "/apps/swat2/save_json/",
@@ -647,6 +704,7 @@ var LIBRARY_OBJECT = (function() {
             upstreamJson['uniqueId'] = sessionStorage.userId
             upstreamJson['featureType'] = 'basin'
             upstreamJson['outletID'] = sessionStorage.streamID
+            upstreamJson['watershed'] = sessionStorage.watershed
             $.ajax({
                 type: 'POST',
                 url: "/apps/swat2/save_json/",
@@ -1114,6 +1172,23 @@ var LIBRARY_OBJECT = (function() {
         });
     };
 
+    get_HRUs = function(watershed, upstreams){
+        $.ajax({
+            type: 'POST',
+            url: '/apps/swat2/get_hrus/',
+            data: {
+                'upstreams': upstreams,
+                'watershed': watershed
+            },
+            success: function(result){
+                var options = result.options
+                for(var i=0, len=options.length; i < len; i++){
+                    $("#hru_select").append('<option value=' + options[i][1] +'>' + options[i][0] + '</option>');
+                }
+            }
+        })
+    }
+
     add_to_cart = function(){
         $.ajax({
             type: 'POST',
@@ -1212,45 +1287,6 @@ var LIBRARY_OBJECT = (function() {
                         data: classData
                     }]
                 });
-//            add the clipped lulc raster for the selected watershed
-                var store = watershed + '_upstream_soil_' + outletID
-                var store_id = 'swat:' + store
-
-                //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
-                wms_source = new ol.source.ImageWMS({
-                    url: geoserver_url,
-                    params: {'LAYERS':store_id, 'STYLES':'soil'},
-                    serverType: 'geoserver',
-                    crossOrigin: 'Anonymous'
-                });
-
-                upstream_soil = new ol.layer.Image({
-                    source: wms_source
-                });
-
-                soil_map.removeLayer(upstreamOverlaySubbasin);
-                soil_map.addLayer(upstream_soil);
-                soil_map.addLayer(upstreamOverlaySubbasin);
-                soil_map.addLayer(upstreamOverlayStream);
-
-
-                var color = '#ffffff';
-                    color = ol.color.asArray(color);
-                    color = color.slice();
-                    color[3] = 0;
-
-                var hollow_style = new ol.style.Style({stroke: new ol.style.Stroke({
-                                                                        color: '#cccccc',
-                                                                        width: 2
-                                                                    }),
-                                                        fill: new ol.style.Fill({
-                                                                        color: color
-                                                                  })
-                                        })
-                upstreamOverlaySubbasin.setStyle(hollow_style)
-                var newrow = '<tr>><td>soil</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
-                $('#tBodySpatial').append(newrow);
-
             }
         });
     };
@@ -1338,44 +1374,7 @@ var LIBRARY_OBJECT = (function() {
                         'series': subclassData
                     }
                 });
-//            add the clipped lulc raster for the selected watershed
-                var store = watershed + '_upstream_lulc_' + outletID
-                var store_id = 'swat:' + store
 
-                //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
-                wms_source = new ol.source.ImageWMS({
-                    url: geoserver_url,
-                    params: {'LAYERS':store_id, 'STYLES':'lulc'},
-                    serverType: 'geoserver',
-                    crossOrigin: 'Anonymous'
-                });
-
-                upstream_lulc = new ol.layer.Image({
-                    source: wms_source
-                });
-
-                lulc_map.removeLayer(upstreamOverlaySubbasin);
-                lulc_map.addLayer(upstream_lulc);
-                lulc_map.addLayer(upstreamOverlaySubbasin);
-                lulc_map.addLayer(upstreamOverlayStream);
-
-
-                var color = '#ffffff';
-                    color = ol.color.asArray(color);
-                    color = color.slice();
-                    color[3] = 0;
-
-                var hollow_style = new ol.style.Style({stroke: new ol.style.Stroke({
-                                                                        color: '#cccccc',
-                                                                        width: 2
-                                                                    }),
-                                                        fill: new ol.style.Fill({
-                                                                        color: color
-                                                                  })
-                                        })
-                upstreamOverlaySubbasin.setStyle(hollow_style)
-                var newrow = '<tr>><td>lulc</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
-                $('#tBodySpatial').append(newrow);
             }
 
         })
@@ -1508,9 +1507,6 @@ var LIBRARY_OBJECT = (function() {
         sessionStorage.setItem('userId', Math.random().toString(36).substr(2,5))
         $('input[name=userID]').val(sessionStorage.userId)
         init_all();
-        cart = []
-        sessionStorage.setItem('cart', JSON.stringify(cart))
-        console.log(sessionStorage.cart)
         $(".radio").change(function(){
             clearLayers();
             toggleLayers();
@@ -1562,6 +1558,12 @@ var LIBRARY_OBJECT = (function() {
             var streamID = sessionStorage.streamID
             var fileType = 'sub'
             get_time_series(watershed, start, end, parameters, streamID, fileType);
+        })
+
+        $("#hru_list").click(function(){
+            var watershed = sessionStorage.watershed
+            var upstreams = sessionStorage.upstreams
+            get_HRUs(watershed, upstreams);
         })
 
         $("#lulc_comp").click(function(){
