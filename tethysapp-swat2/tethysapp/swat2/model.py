@@ -194,28 +194,32 @@ def extract_daily_rch(watershed, start, end, parameters, reachid):
     return rchDict
 
 def extract_sub(watershed, start, end, parameters, subid):
-    sub_path = os.path.join(data_path, watershed, 'Outputs', 'output.sub')
+    #function to access timeseries data from output.sub file using user specified variables and date range
+    sub_path = os.path.join(data_path, watershed, 'Outputs', 'output.sub') #path to output.sub file in server
 
+    #read in start and end dates
     dt_start = datetime.strptime(start, '%B %d, %Y')
     dt_end = datetime.strptime(end, '%B %d, %Y')
+
 
     year_start = str(dt_start.year)
     month_start = str(dt_start.month)
     day_start = str(dt_start.day)
 
+    #format start date into string to match format in output.sub file. this will be used to skip all unnecessary lines
     if len(day_start) == 1:
         day_start = '  ' + day_start + ' '
     if len(day_start) == 2:
         day_start = ' ' + day_start + ' '
-
     date_str = month_start + day_start + year_start
 
+    #create daterange in milliseconds to be used by highcharts javascript API
     daterange = pd.date_range(start, end, freq='1d')
     daterange = daterange.union([daterange[-1]])
     daterange_str = [d.strftime('%b %d, %Y') for d in daterange]
     daterange_mil = [int(d.strftime('%s')) * 1000 for d in daterange]
 
-
+    #initiate dictionary that AJAX will pass back to javascript for data visualization
     subDict = {'Watershed': watershed,
                'Dates': daterange_str,
                'ReachID': subid,
@@ -225,17 +229,18 @@ def extract_sub(watershed, start, end, parameters, subid):
                'Timestep': 'Daily',
                'FileType': 'sub'}
 
-    for x in range(0, len(parameters)):
-        param_index = sub_param_vals.index(parameters[x])
-        param_name = sub_param_names[parameters[x]]
-        data = []
+
+    for x in range(0, len(parameters)):     #loop through all user-selected variables
+        param_index = sub_param_vals.index(parameters[x])   #get the column index for the variable in output.sub
+        param_name = sub_param_names[parameters[x]]     #get the human readable name for the variable
+        data = []   #initiate array that will contain all values within daterange
         f = open(sub_path)
 
-        for skip_line in f:
+        for skip_line in f:     #skip all unnecessary lines
             if date_str in skip_line:
                 break
 
-        for num, line in enumerate(f,1):
+        for num, line in enumerate(f,1):    #loop through all lines in file that might have requested data in it
             line = str(line.strip())
             columns = line.split()
             if columns[0] != 'BIGSUB':
@@ -244,20 +249,20 @@ def extract_sub(watershed, start, end, parameters, subid):
                 columns.insert(1, split[6:])
             date = datetime.strptime(columns[3] + '/' + columns [4] + '/' + columns[5], '%m/%d/%Y')
             if columns[1] == str(subid) and dt_start <= date <= dt_end:
-                data.append(float(columns[param_index]))
+                data.append(float(columns[param_index]))    #add data to data array
             elif date > dt_end:
                 break
 
         f.close()
-        ts = []
+        ts = [] #initiate array that will contain (time, data) tuples to be plotted by highcharts
         i = 0
         while i < len(data):
             ts.append([daterange_mil[i],data[i]])
             i += 1
 
 
-        subDict['Values'][x] = ts
-        subDict['Names'].append(param_name)
+        subDict['Values'][x] = ts   #add ts array to the dictionary
+        subDict['Names'].append(param_name)     #add variable name to the dictionary
 
 
     return subDict
