@@ -236,7 +236,7 @@ def extract_sub(watershed, start, end, parameters, subid):
         data = []   #initiate array that will contain all values within daterange
         f = open(sub_path)
 
-        for skip_line in f:     #skip all unnecessary lines
+        for skip_line in f:     #skip all lines outside of user-defined date range
             if date_str in skip_line:
                 break
 
@@ -247,8 +247,8 @@ def extract_sub(watershed, start, end, parameters, subid):
                 split = columns[0]
                 columns[0] = split[:6]
                 columns.insert(1, split[6:])
-            date = datetime.strptime(columns[3] + '/' + columns [4] + '/' + columns[5], '%m/%d/%Y')
-            if columns[1] == str(subid) and dt_start <= date <= dt_end:
+            date = datetime.strptime(columns[3] + '/' + columns [4] + '/' + columns[5], '%m/%d/%Y') #create date from current line
+            if columns[1] == str(subid) and dt_start <= date <= dt_end: #if date on current line is in user-defined date range
                 data.append(float(columns[param_index]))    #add data to data array
             elif date > dt_end:
                 break
