@@ -359,13 +359,14 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
 
 def coverage_stats(watershed, uniqueID, outletID, raster_type):
     tif_path = temp_workspace + '/' + str(uniqueID) + '/' + watershed + '_upstream_' + str(raster_type) + '_' + str(outletID) + '.tif'
-    ds = gdal.Open(tif_path)
-    band = ds.GetRasterBand(1)
-    array = np.array(band.ReadAsArray())
-    size = array.size
-    unique, counts = np.unique(array, return_counts=True)
-    unique_dict = dict(zip(unique, counts))
+    ds = gdal.Open(tif_path) #open user-requested TIFF file using gdal
+    band = ds.GetRasterBand(1) #read the 1st raster band
+    array = np.array(band.ReadAsArray()) #create an array of all values in the raster
+    size = array.size #get the size (pixel count) of the raster
+    unique, counts = np.unique(array, return_counts=True) #find all the unique values in the raster
+    unique_dict = dict(zip(unique, counts))#create a dictionary containing unique values and the number of times each occurs
 
+    #get "No Data" values from the {lulc or soil}_info.txt file
     color_key_path = os.path.join(data_path, watershed, 'Land', raster_type + '_info.txt')
     nodata_values = []
     with open(color_key_path) as f:
@@ -373,16 +374,23 @@ def coverage_stats(watershed, uniqueID, outletID, raster_type):
             splitline = line.split('  ')
             if splitline[1] == 'NoData':
                 nodata_values.append(splitline[0])
+                
+    #subtract the count of "No Data" pixels in the raster from the total raster size
     for x in unique_dict:
         if str(x) in nodata_values:
             nodata_size = unique_dict[x]
             size = size - nodata_size
             unique_dict[x] = 0
-
+            
+    #compute percent coverage for each unique value
     for x in unique_dict:
-        if x != 127:
+        if x not in nodata_values:
             unique_dict[x] = float(unique_dict[x]) / size * 100
+            
+    #create dictionary containing all the coverage information from the raster and info.txt file
     if raster_type == 'lulc':
+        
+        #lulc is divided into classes and subclasses for easier categorizing and visualization
         lulc_dict = {'classes': {},'classValues': {}, 'classColors': {}, 'subclassValues': {}, 'subclassColors': {}}
 
         for val in unique_dict:
@@ -398,11 +406,13 @@ def coverage_stats(watershed, uniqueID, outletID, raster_type):
                             lulc_dict['classValues'][splitline[1]] = unique_dict[val]
                             lulc_dict['classColors'][splitline[1]] = splitline[-2]
                         else:
-                            lulc_dict['classValues'][splitline[1]] += unique_dict[val]
+                            #add all the % coverage values within a class together
+                            lulc_dict['classValues'][splitline[1]] += unique_dict[val] 
 
         return(lulc_dict)
-
+    
     if raster_type == 'soil':
+        #soil type is only divided into soil types and does not have subcategories like lulc
         soil_dict = {'classValues': {}, 'classColors': {}}
         for val in unique_dict:
             with open(color_key_path) as f:
