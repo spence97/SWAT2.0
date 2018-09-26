@@ -584,7 +584,7 @@ var LIBRARY_OBJECT = (function() {
                     source: upstreamSubbasinVectorSource,
                     style: new ol.style.Style({
                         stroke: new ol.style.Stroke({
-                            color: '#cccccc',
+                            color: '#ffffff',
                             width: 2
                         }),
                         fill: new ol.style.Fill({

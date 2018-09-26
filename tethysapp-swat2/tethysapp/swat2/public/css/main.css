@@ -225,3 +225,10 @@
 #spatialData th {
     background-color: #5aa3e8;
 }
+
+table {
+    border-style: solid;
+    border-width: 1px;
+    border-color: #647899;
+    border-radius: 5px;
+}
