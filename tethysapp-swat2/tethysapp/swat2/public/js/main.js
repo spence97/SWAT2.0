@@ -29,7 +29,7 @@ var LIBRARY_OBJECT = (function() {
         upstream_soil,
         rch_map,
         sub_map,
-        hru_map,
+//        hru_map,
         lulc_map,
         soil_map,
         nasaaccess_map,
@@ -47,11 +47,12 @@ var LIBRARY_OBJECT = (function() {
         init_map,
         init_rch_map,
         init_sub_map,
-        init_hru_map,
+//        init_hru_map,
         init_lulc_map,
         init_soil_map,
         init_nasaaccess_map,
         init_events,
+        update_selectors,
         get_time_series,
         get_HRUs,
         add_to_cart,
@@ -60,6 +61,7 @@ var LIBRARY_OBJECT = (function() {
         soil_compute,
         get_upstream,
         save_json,
+        clip_rasters,
         add_streams,
         add_basins,
         add_lulc,
@@ -68,8 +70,9 @@ var LIBRARY_OBJECT = (function() {
         toggleLayers,
         updateTab,
         updateView,
-        update_selectors,
         reset_all,
+        nasaaccess_validate,
+        nasaaccess,
         init_all
 
     /************************************************************************
@@ -249,44 +252,44 @@ var LIBRARY_OBJECT = (function() {
 
     };
 
-    init_hru_map = function() {
-//      Initialize all the initial map elements (projection, basemap, layers, center, zoom)
-        var projection = ol.proj.get('EPSG:4326');
-        var baseLayer = new ol.layer.Tile({
-            source: new ol.source.BingMaps({
-                key: '5TC0yID7CYaqv3nVQLKe~xWVt4aXWMJq2Ed72cO4xsA~ApdeyQwHyH_btMjQS1NJ7OHKY8BK-W-EMQMrIavoQUMYXeZIQOUURnKGBOC7UCt4',
-                imagerySet: 'AerialWithLabels' // Options 'Aerial', 'AerialWithLabels', 'Road'
-            })
-        });
-
-        featureOverlaySubbasin = new ol.layer.Vector({
-            source: new ol.source.Vector()
-        });
-
-
-        var view = new ol.View({
-            center: [0, 0],
-            projection: projection,
-            zoom: 5.5
-        });
-
-        wms_source = new ol.source.ImageWMS();
-
-        wms_layer = new ol.layer.Image({
-            source: wms_source
-        });
-
-        layers = [baseLayer, featureOverlaySubbasin];
-
-        hru_map = new ol.Map({
-            target: document.getElementById("hru_map"),
-            layers: layers,
-            view: view
-        });
-
-        map.crossOrigin = 'anonymous';
-
-    };
+//    init_hru_map = function() {
+////      Initialize all the initial map elements (projection, basemap, layers, center, zoom)
+//        var projection = ol.proj.get('EPSG:4326');
+//        var baseLayer = new ol.layer.Tile({
+//            source: new ol.source.BingMaps({
+//                key: '5TC0yID7CYaqv3nVQLKe~xWVt4aXWMJq2Ed72cO4xsA~ApdeyQwHyH_btMjQS1NJ7OHKY8BK-W-EMQMrIavoQUMYXeZIQOUURnKGBOC7UCt4',
+//                imagerySet: 'AerialWithLabels' // Options 'Aerial', 'AerialWithLabels', 'Road'
+//            })
+//        });
+//
+//        featureOverlaySubbasin = new ol.layer.Vector({
+//            source: new ol.source.Vector()
+//        });
+//
+//
+//        var view = new ol.View({
+//            center: [0, 0],
+//            projection: projection,
+//            zoom: 5.5
+//        });
+//
+//        wms_source = new ol.source.ImageWMS();
+//
+//        wms_layer = new ol.layer.Image({
+//            source: wms_source
+//        });
+//
+//        layers = [baseLayer, featureOverlaySubbasin];
+//
+//        hru_map = new ol.Map({
+//            target: document.getElementById("hru_map"),
+//            layers: layers,
+//            view: view
+//        });
+//
+//        map.crossOrigin = 'anonymous';
+//
+//    };
 
     init_lulc_map = function() {
 //      Initialize all the initial map elements (projection, basemap, layers, center, zoom)
@@ -437,7 +440,7 @@ var LIBRARY_OBJECT = (function() {
 
                 reset_all();
 
-                var store = $('#watershed_select option:selected').val()
+                var store = $('#watershed_select option:selected').val().split('|')[1]
                 var reach_store_id = 'swat:' + store + '-reach'
                 var basin_store_id = 'swat:' + store + '-subbasin'
 
@@ -466,18 +469,22 @@ var LIBRARY_OBJECT = (function() {
                             }
                             var streamID = parseFloat(result["features"][0]["properties"]["Subbasin"]);
                             sessionStorage.setItem('streamID', streamID)
-                            var watershed = $('#watershed_select').val();
+                            var watershed = $('#watershed_select option:selected').val().split('|')[1]
                             sessionStorage.setItem('watershed', watershed)
+                            var watershed_id = $('#watershed_select option:selected').val().split('|')[0]
+                            sessionStorage.setItem('watershed_id', watershed_id)
                             $('#rch_tab').addClass('active');
                             $('#sub_tab').removeClass('active');
-                            $('#hru_tab').removeClass('active');
                             $('#lulc_tab').removeClass('active');
+                            $('#clip_lulc').removeAttr('disabled')
+                            $('#lulc_comp').attr('disabled', true)
                             $('#soil_tab').removeClass('active');
+                            $('#clip_soil').removeAttr('disabled')
+                            $('#soil_comp').attr('disabled', true)
                             $('#nasaaccess_tab').removeClass('active');
                             $('#datacart_tab').removeClass('active');
                             $('#rch_link').addClass('active');
                             $('#sub_link').removeClass('active');
-                            $('#hru_link').removeClass('active');
                             $('#lulc_link').removeClass('active');
                             $('#soil_link').removeClass('active');
                             $('#nasaaccess_link').removeClass('active');
@@ -618,50 +625,11 @@ var LIBRARY_OBJECT = (function() {
                 });
                 sub_map.addLayer(upstreamOverlaySubbasin);
                 sub_map.addLayer(featureOverlaySubbasin);
+                soil_map.addLayer(upstreamOverlaySubbasin);
+                lulc_map.addLayer(upstreamOverlaySubbasin);
 
                 save_json(upstream_basin_url, upstream_reach_url, data);
 
-                var soil_store = watershed + '_upstream_soil_' + outletID
-                var soil_store_id = 'swat:' + soil_store
-
-                //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
-                var soil_wms_source = new ol.source.ImageWMS({
-                    url: geoserver_url,
-                    params: {'LAYERS':soil_store_id, 'STYLES':'soil'},
-                    serverType: 'geoserver',
-                    crossOrigin: 'Anonymous'
-                });
-
-                upstream_soil = new ol.layer.Image({
-                    source: soil_wms_source
-                });
-
-                var lulc_store = watershed + '_upstream_lulc_' + outletID
-                var lulc_store_id = 'swat:' + lulc_store
-
-                //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
-                var lulc_wms_source = new ol.source.ImageWMS({
-                    url: geoserver_url,
-                    params: {'LAYERS':lulc_store_id, 'STYLES':'lulc'},
-                    serverType: 'geoserver',
-                    crossOrigin: 'Anonymous'
-                });
-
-                upstream_lulc = new ol.layer.Image({
-                    source: lulc_wms_source
-                });
-
-
-                hru_map.addLayer(upstream_lulc);
-                hru_map.addLayer(upstreamOverlaySubbasin);
-                lulc_map.addLayer(upstream_lulc);
-                lulc_map.addLayer(upstreamOverlaySubbasin);
-                var newrow = '<tr>><td>lulc</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
-                $('#tBodySpatial').append(newrow);
-                soil_map.addLayer(upstream_soil);
-                soil_map.addLayer(upstreamOverlaySubbasin);
-                var newrow = '<tr>><td>soil</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
-                $('#tBodySpatial').append(newrow);
                 nasaaccess_map.addLayer(upstreamOverlaySubbasin);
             }
         });
@@ -693,6 +661,15 @@ var LIBRARY_OBJECT = (function() {
 
                     rch_map.updateSize();
                     rch_map.getView().fit(sessionStorage.streamExtent.split(',').map(Number), rch_map.getSize());
+                    sub_map.updateSize();
+                    sub_map.getView().fit(sessionStorage.streamExtent.split(',').map(Number), sub_map.getSize());
+                    lulc_map.updateSize();
+                    lulc_map.getView().fit(sessionStorage.streamExtent.split(',').map(Number), lulc_map.getSize());
+                    soil_map.updateSize();
+                    soil_map.getView().fit(sessionStorage.streamExtent.split(',').map(Number), soil_map.getSize());
+                    nasaaccess_map.updateSize();
+                    nasaaccess_map.getView().fit(sessionStorage.streamExtent.split(',').map(Number), nasaaccess_map.getSize());
+
 
                     var newrow = '<tr><td>reach_upstream</td><td>JSON</td><td>' + sessionStorage.streamID + '</td></tr>'
                     $('#tBodySpatial').append(newrow);
@@ -724,8 +701,6 @@ var LIBRARY_OBJECT = (function() {
 
                     sub_map.updateSize();
                     sub_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), sub_map.getSize());
-                    hru_map.updateSize();
-                    hru_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), hru_map.getSize());
                     lulc_map.updateSize();
                     lulc_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), lulc_map.getSize());
                     soil_map.updateSize();
@@ -742,9 +717,77 @@ var LIBRARY_OBJECT = (function() {
         })
     }
 
+    clip_rasters = function(raster_type) {
+
+        var watershed = sessionStorage.watershed
+        var userId = sessionStorage.userId
+        var outletID = sessionStorage.streamID
+        $.ajax({
+            type: "POST",
+            url: '/apps/swat2/clip_rasters/',
+            data: {
+                'watershed': watershed,
+                'userId': userId,
+                'outletID': outletID,
+                'raster_type': raster_type
+            },
+            success: function(data) {
+                lulc_map.removeLayer(upstreamOverlaySubbasin)
+                soil_map.removeLayer(upstreamOverlaySubbasin)
+
+                if (data.raster_type == 'lulc') {
+                    $('#clip_lulc').attr("disabled", true)
+                    $('#lulc_comp').attr("disabled", false)
+                    var lulc_store = watershed + '_upstream_lulc_' + outletID
+                    var lulc_store_id = 'swat:' + lulc_store
+
+                    //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
+                    var lulc_wms_source = new ol.source.ImageWMS({
+                        url: geoserver_url,
+                        params: {'LAYERS':lulc_store_id, 'STYLES':'lulc'},
+                        serverType: 'geoserver',
+                        crossOrigin: 'Anonymous'
+                    });
+
+                    upstream_lulc = new ol.layer.Image({
+                        source: lulc_wms_source
+                    });
+
+                    lulc_map.addLayer(upstream_lulc);
+                    lulc_map.addLayer(upstreamOverlaySubbasin);
+                    var newrow = '<tr>><td>lulc</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
+                    $('#tBodySpatial').append(newrow);
+                }
+                if (data.raster_type == 'soil') {
+                    $('#clip_soil').attr("disabled", true);
+                    $('#soil_comp').attr("disabled", false)
+                    var soil_store = watershed + '_upstream_soil_' + outletID
+                    var soil_store_id = 'swat:' + soil_store
+
+                    //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
+                    var soil_wms_source = new ol.source.ImageWMS({
+                        url: geoserver_url,
+                        params: {'LAYERS':soil_store_id, 'STYLES':'soil'},
+                        serverType: 'geoserver',
+                        crossOrigin: 'Anonymous'
+                    });
+
+                    upstream_soil = new ol.layer.Image({
+                        source: soil_wms_source
+                    });
+                    soil_map.addLayer(upstream_soil);
+                    soil_map.addLayer(upstreamOverlaySubbasin);
+                    var newrow = '<tr>><td>soil</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
+                    $('#tBodySpatial').append(newrow);
+                }
+            }
+        })
+    }
+
     add_streams = function() {
 //      add the streams for the selected watershed
-        var store = $('#watershed_select option:selected').val()
+        var store = $('#watershed_select option:selected').val().split('|')[1]
+
         var store_id = 'swat:' + store + '-reach'
 
 //      Set the style for the streams layer
@@ -782,7 +825,7 @@ var LIBRARY_OBJECT = (function() {
 
     add_basins = function(){
 //      add the basins for the selected watershed
-        var store = $('#watershed_select option:selected').val()
+        var store = $('#watershed_select option:selected').val().split('|')[1]
         var store_id = 'swat:' + store + '-subbasin'
 //      Set the style for the subbasins layer
         var sld_string = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>'+ store_id + '</Name><UserStyle><FeatureTypeStyle><Rule>\
@@ -924,15 +967,13 @@ var LIBRARY_OBJECT = (function() {
             $('#sub_compute').removeClass('hidden')
             sub_map.updateSize();
             sub_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), sub_map.getSize());
-        } else if ($('#hru_link').hasClass('active')) {
-            $('#hru_compute').removeClass('hidden')
-            hru_map.updateSize();
-            hru_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), hru_map.getSize());
         } else if ($("#lulc_link").hasClass('active')) {
+            $('#lulc_clip').removeClass('hidden')
             $('#lulc_compute').removeClass('hidden')
             lulc_map.updateSize();
             lulc_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), lulc_map.getSize());
         } else if ($('#soil_link').hasClass('active')) {
+            $('#soil_clip').removeClass('hidden')
             $('#soil_compute').removeClass('hidden')
             soil_map.updateSize();
             soil_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), soil_map.getSize());
@@ -946,7 +987,7 @@ var LIBRARY_OBJECT = (function() {
 
 
     updateView = function() {
-        var store = $('#watershed_select option:selected').val()
+        var store = $('#watershed_select option:selected').val().split('|')[1]
         var store_id = 'swat:' + store + '-reach'
         if (store === 'lower_mekong') {
             var view = new ol.View({
@@ -997,20 +1038,23 @@ var LIBRARY_OBJECT = (function() {
         }
     }
 
-    get_time_series = function(watershed, start, end, parameters, streamID, fileType) {
+    get_time_series = function(watershed_id, watershed, start, end, parameters, streamID, fileType) {
 //      Function to pass selected dates, parameters, and streamID to the rch data parser python function and then plot the data
         var monthOrDay
-        if ($(".toggle").hasClass( "off" )) {
-            monthOrDay = 'Daily'
-        } else {
-            monthOrDay = 'Monthly'
-        }
+        monthOrDay = 'Daily'
+//        if ($(".toggle").hasClass( "off" )) {
+//            monthOrDay = 'Daily'
+//        } else {
+//            monthOrDay = 'Monthly'
+//        }
         console.log(monthOrDay)
+        console.log(watershed_id)
 //      AJAX call to the timeseries python controller to run the rch data parser function
         $.ajax({
             type: 'POST',
             url: '/apps/swat2/timeseries/',
             data: {
+                'watershed_id': watershed_id,
                 'watershed': watershed,
                 'startDate': start,
                 'endDate': end,
@@ -1053,16 +1097,6 @@ var LIBRARY_OBJECT = (function() {
                         $('#sub_chart_container').removeClass('hidden');
                         chartContainer = 'sub_chart_container'
                     }
-//                    if ($("#lulcsoil_tab").hasClass('active')) {
-//                        $('#lulc_compute').removeClass('hidden');
-//                        $('#download_csv').addClass('hidden');
-//                        $('#download_ascii').addClass('hidden');
-//                    } else if ($('#reach_tab').hasClass('active')) {
-//                        $('#lulc_compute').addClass('hidden');
-//                        $('#download_csv').removeClass('hidden');
-//                        $('#download_ascii').removeClass('hidden');
-//                    }
-
                 }
                 var plot_title
                 fileType = fileType.toUpperCase()
@@ -1172,23 +1206,6 @@ var LIBRARY_OBJECT = (function() {
         });
     };
 
-    get_HRUs = function(watershed, upstreams){
-        $.ajax({
-            type: 'POST',
-            url: '/apps/swat2/get_hrus/',
-            data: {
-                'upstreams': upstreams,
-                'watershed': watershed
-            },
-            success: function(result){
-                var options = result.options
-                for(var i=0, len=options.length; i < len; i++){
-                    $("#hru_select").append('<option value=' + options[i][1] +'>' + options[i][0] + '</option>');
-                }
-            }
-        })
-    }
-
     add_to_cart = function(){
         $.ajax({
             type: 'POST',
@@ -1218,18 +1235,9 @@ var LIBRARY_OBJECT = (function() {
         });
     };
 
-//    download = function() {
-//        $.ajax({
-//            type: 'POST',
-//            url:"/apps/swat2/download_files/",
-//            data: {'uniqueID': sessionStorage.userId}
-//        })
-//    }
-
-
 
     soil_compute = function(){
-        var watershed = $('#watershed_select option:selected').val()
+        var watershed = sessionStorage.watershed
         var userID = sessionStorage.userId
         var outletID = sessionStorage.streamID
         var rasterType = 'soil'
@@ -1292,7 +1300,7 @@ var LIBRARY_OBJECT = (function() {
     };
 
     lulc_compute = function(){
-        var watershed = $('#watershed_select option:selected').val()
+        var watershed = $('#watershed_select option:selected').val().split('|')[1]
         var userID = sessionStorage.userId
         var outletID = sessionStorage.streamID
         var rasterType = 'lulc'
@@ -1380,70 +1388,113 @@ var LIBRARY_OBJECT = (function() {
         })
     }
 
+    update_selectors = function() {
+        var userId = sessionStorage.userId
+        var watershed = $('#watershed_select option:selected').val().split('|')[1]
+        var watershed_id = $('#watershed_select option:selected').val().split('|')[0]
+        $.ajax({
+            type: 'POST',
+            url: "/apps/swat2/update_selectors/",
+            data: {
+                'watershed_id':watershed_id,
+                'watershed':watershed,
+                'userID': userId,
+                },
+            success: function(result){
+                var rch_start = result.rch.start
+                var rch_end = result.rch.end
+                var rch_vars = result.rch.vars
+                var sub_start = result.sub.start
+                var sub_end = result.sub.end
+                var sub_vars = result.sub.vars
+                console.log(rch_start, rch_end, rch_vars, sub_start, sub_end, sub_vars)
 
+                var rch_date_options = {
+                    format: 'MM d, yyyy',
+                    startDate: rch_start,
+                    endDate: rch_end,
+                    startView: 'decade',
+                    minViewMode: 'days',
+                    orientation: 'bottom auto'
+                }
+                var sub_date_options =  {
+                    format: 'MM d, yyyy',
+                    startDate: sub_start,
+                    endDate: sub_end,
+                    startView: 'decade',
+                    minViewMode: 'days',
+                    orientation: 'bottom auto'
+                }
 
+                $('.input-daterange input').each(function() {
+                    $(this).datepicker('setDate', null)
+                    $(this).datepicker('destroy');
+                });
 
-    function loadXMLDoc() {
-        var request = new XMLHttpRequest();
-        request.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                update_selectors(this);
+                $('.rch_date').datepicker(rch_date_options);
+
+                $('.sub_date').datepicker(sub_date_options);
+                $('.start_date').attr("placeholder", "Start Date")
+                $('.end_date').attr("placeholder", "End Date")
+                $(".sub_var").html('');
+                $(".rch_var").html('');
+                sub_vars.forEach(function(schema,i){
+                    var new_option = new Option(schema[0],schema[1]);
+                    $(".sub_var").append(new_option);
+                });
+                rch_vars.forEach(function(schema,i){
+                    var new_option = new Option(schema[0],schema[1]);
+                    $(".rch_var").append(new_option);
+                });
             }
-        };
-        request.open("GET", "/static/swat2/watershed_data/watershed_info.xml", true);
-        request.send();
-    };
+        })
+    }
 
-
-    update_selectors = function(xml) {
-        var watershed, xmlDoc, x, i, watershed_num, start_date, end_date, params_list
-        watershed = $('#watershed_select option:selected').val()
-        xmlDoc = xml.responseXML;
-        x = xmlDoc.getElementsByTagName('watershed');
-        for (i = 0; i< x.length; i++) {
-            var watershed_name = x[i].childNodes[0].innerHTML
-            if (String(watershed_name) === String(watershed)) {
-                watershed_num = i
-            }
-        }
-
-
-        if ($(".toggle").hasClass( "off")) {
-            start_date = xmlDoc.getElementsByTagName("day_start_date")[watershed_num].innerHTML
-            end_date = xmlDoc.getElementsByTagName("day_end_date")[watershed_num].innerHTML
-            var options = {
-                format: 'MM d, yyyy',
-                startDate: start_date,
-                endDate: end_date,
-                startView: 'decade',
-                minViewMode: 'days',
-                orientation: 'bottom auto'
-            }
-            $('.input-daterange input').each(function() {
-                $(this).datepicker('setDate', null)
-                $(this).datepicker('destroy');
-                $(this).datepicker(options);
-            });
+    nasaaccess_validate = function() {
+        var watershed = sessionStorage.watershed
+        var start = $('#na_start_pick').val()
+        var end = $('#na_end_pick').val()
+        var functions = [];
+        $('.chk:checked').each(function() {
+             functions.push( $( this ).val());
+        });
+        console.log(watershed, start, end, functions)
+        if (watershed === undefined || start === 'Start Date' || end === 'End Date' || functions.length == 0) {
+            alert('Please be sure you have selected start and end dates and at least 1 function')
         } else {
-            start_date = xmlDoc.getElementsByTagName("month_start_date")[watershed_num].innerHTML;
-            end_date = xmlDoc.getElementsByTagName("month_end_date")[watershed_num].innerHTML;
-            var options = {
-                format: 'MM yyyy',
-                startDate: start_date,
-                endDate: end_date,
-                startView: 'decade',
-                minViewMode: 'months',
-                orientation: 'bottom auto'
-            }
-            $('.input-daterange input').each(function() {
-                $(this).datepicker('setDate', null)
-                $(this).datepicker('destroy');
-                $(this).datepicker(options);
-            });
+            $("#cont-modal").modal('show');
         }
-        $('#rch_start_pick').attr('placeholder', 'Start Date')
-        $('#rch_end_pick').attr('placeholder', 'End Date')
+    }
 
+    nasaaccess = function() {
+//      Get the values from the nasaaccess form and pass them to the run_nasaaccess python controller
+        var start = $('#na_start_pick').val();
+        var end = $('#na_end_pick').val();
+        var functions = [];
+        $('.chk:checked').each(function() {
+             functions.push( $( this ).val());
+        });
+        var watershed = sessionStorage.watershed
+        var userId = sessionStorage.userId
+        var email = $('#id_email').val();
+        var streamId = sessionStorage.streamID
+
+	    console.log(start, end, functions, watershed, email)
+        $.ajax({
+            type: 'POST',
+            url: "/apps/swat2/run_nasaaccess/",
+            data: {
+                'userId': userId,
+                'streamId': streamId,
+                'startDate': start,
+                'endDate': end,
+                'functions': functions,
+                'watershed': watershed,
+                'email': email
+            },
+        }).done(function() {
+            console.log('NASAaccess functions are running')
+        });
     }
 
     reset_all = function(){
@@ -1463,11 +1514,14 @@ var LIBRARY_OBJECT = (function() {
         $('#sub_chart_container').addClass('hidden');
         $('#lulcPieContainer').addClass('hidden');
         $('#soilPieContainer').addClass('hidden');
+        $('#clip_lulc').attr('disabled', false)
+        $('#clip_soil').attr('disabled', false)
+        $('#lulc_comp').attr('disabled', true)
+        $('#soil_comp').attr('disabled', true)
         rch_map.removeLayer(featureOverlayStream)
         rch_map.removeLayer(upstreamOverlayStream)
         sub_map.removeLayer(featureOverlaySubbasin)
         sub_map.removeLayer(upstreamOverlaySubbasin)
-        hru_map.removeLayer(upstreamOverlaySubbasin)
         lulc_map.removeLayer(upstreamOverlaySubbasin)
         soil_map.removeLayer(upstreamOverlaySubbasin)
         nasaaccess_map.removeLayer(upstreamOverlaySubbasin)
@@ -1480,7 +1534,6 @@ var LIBRARY_OBJECT = (function() {
         updateView();
         init_rch_map();
         init_sub_map();
-        init_hru_map();
         init_lulc_map();
         init_soil_map();
         init_nasaaccess_map();
@@ -1505,27 +1558,35 @@ var LIBRARY_OBJECT = (function() {
 
     $(function() {
         sessionStorage.setItem('userId', Math.random().toString(36).substr(2,5))
+        var watershed = $('#watershed_select option:selected').val().split('|')[1]
+        sessionStorage.setItem('watershed', watershed)
+        var watershed_id = $('#watershed_select option:selected').val().split('|')[0]
+        sessionStorage.setItem('watershed_id', watershed_id)
         $('input[name=userID]').val(sessionStorage.userId)
         init_all();
+        update_selectors();
+
         $(".radio").change(function(){
             clearLayers();
             toggleLayers();
         })
 
-        $(".monthDayToggle").change(function(){
-            loadXMLDoc();
-        })
-
         $(".basinToggle").change(function(){
             clearLayers();
             toggleLayers();
+
+        })
+
+        $('#watershed_select').change(function(){
+            update_selectors();
         })
 
         $(".nav-tabs").click(function(){
             $('#rch_compute').addClass('hidden')
             $('#sub_compute').addClass('hidden')
-            $('#hru_compute').addClass('hidden')
+            $('#lulc_clip').addClass('hidden')
             $('#lulc_compute').addClass('hidden')
+            $('#soil_clip').addClass('hidden')
             $('#soil_compute').addClass('hidden')
             $('#saveData').addClass('hidden')
             $('#downloadData').addClass('hidden')
@@ -1534,7 +1595,7 @@ var LIBRARY_OBJECT = (function() {
 
         $("#rch_compute").click(function(){
             $('#view-reach-loading').removeClass('hidden')
-            var watershed = sessionStorage.watershed
+            var watershed_id = sessionStorage.watershed_id
             var start = $('#rch_start_pick').val();
             var end = $('#rch_end_pick').val();
             var parameters = []
@@ -1543,12 +1604,12 @@ var LIBRARY_OBJECT = (function() {
             });
             var streamID = sessionStorage.streamID
             var fileType = 'rch'
-            get_time_series(watershed, start, end, parameters, streamID, fileType);
+            get_time_series(watershed_id, watershed, start, end, parameters, streamID, fileType);
         })
 
         $("#sub_compute").click(function(){
             $('#view-sub-loading').removeClass('hidden')
-            var watershed = sessionStorage.watershed
+            var watershed_id = sessionStorage.watershed_id
             var start = $('#sub_start_pick').val();
             var end = $('#sub_end_pick').val();
             var parameters = []
@@ -1557,13 +1618,15 @@ var LIBRARY_OBJECT = (function() {
             });
             var streamID = sessionStorage.streamID
             var fileType = 'sub'
-            get_time_series(watershed, start, end, parameters, streamID, fileType);
+            get_time_series(watershed_id, watershed, start, end, parameters, streamID, fileType);
         })
 
-        $("#hru_list").click(function(){
-            var watershed = sessionStorage.watershed
-            var upstreams = sessionStorage.upstreams
-            get_HRUs(watershed, upstreams);
+        $('#clip_lulc').click(function(){
+            clip_rasters('lulc')
+        })
+
+        $('#clip_soil').click(function(){
+            clip_rasters('soil')
         })
 
         $("#lulc_comp").click(function(){
@@ -1578,17 +1641,19 @@ var LIBRARY_OBJECT = (function() {
             $('#soil-pie-loading').removeClass('hidden')
         })
 
-        $("#std_view").click(function(){
-            $("#summary-modal").modal('show');
-        })
-
         $("#saveData").click(function(){
             add_to_cart();
         })
 
-//        $("#downloadData").click(function(){
-//            download();
-//        })
+        $("#nasaaccess").click(function(){
+            nasaaccess_validate();
+        })
+
+        $('#na_submit').click(function() {
+            $("#cont-modal").modal('hide');
+            nasaaccess()
+        });
+
     })
     return public_interface;
 
@@ -1600,3 +1665,65 @@ var LIBRARY_OBJECT = (function() {
 // function immediately after being parsed.
 
 
+//    function loadXMLDoc() {
+//        var request = new XMLHttpRequest();
+//        request.onreadystatechange = function() {
+//            if (this.readyState == 4 && this.status == 200) {
+//                update_selectors(this);
+//            }
+//        };
+//        request.open("GET", "/static/swat2/watershed_data/watershed_info.xml", true);
+//        request.send();
+//    };
+//
+//
+//    update_selectors = function(xml) {
+//        var watershed, xmlDoc, x, i, watershed_num, start_date, end_date, params_list
+//        watershed = $('#watershed_select option:selected').val()
+//        xmlDoc = xml.responseXML;
+//        x = xmlDoc.getElementsByTagName('watershed');
+//        for (i = 0; i< x.length; i++) {
+//            var watershed_name = x[i].childNodes[0].innerHTML
+//            if (String(watershed_name) === String(watershed)) {
+//                watershed_num = i
+//            }
+//        }
+//
+//
+//        if ($(".toggle").hasClass( "off")) {
+//            start_date = xmlDoc.getElementsByTagName("day_start_date")[watershed_num].innerHTML
+//            end_date = xmlDoc.getElementsByTagName("day_end_date")[watershed_num].innerHTML
+//            var options = {
+//                format: 'MM d, yyyy',
+//                startDate: start_date,
+//                endDate: end_date,
+//                startView: 'decade',
+//                minViewMode: 'days',
+//                orientation: 'bottom auto'
+//            }
+//            $('.input-daterange input').each(function() {
+//                $(this).datepicker('setDate', null)
+//                $(this).datepicker('destroy');
+//                $(this).datepicker(options);
+//            });
+//        } else {
+//            start_date = xmlDoc.getElementsByTagName("month_start_date")[watershed_num].innerHTML;
+//            end_date = xmlDoc.getElementsByTagName("month_end_date")[watershed_num].innerHTML;
+//            var options = {
+//                format: 'MM yyyy',
+//                startDate: start_date,
+//                endDate: end_date,
+//                startView: 'decade',
+//                minViewMode: 'months',
+//                orientation: 'bottom auto'
+//            }
+//            $('.input-daterange input').each(function() {
+//                $(this).datepicker('setDate', null)
+//                $(this).datepicker('destroy');
+//                $(this).datepicker(options);
+//            });
+//        }
+//        $('#rch_start_pick').attr('placeholder', 'Start Date')
+//        $('#rch_end_pick').attr('placeholder', 'End Date')
+//
+//    }

@@ -1,4 +1,5 @@
 from tethys_sdk.base import TethysAppBase, url_map_maker
+from tethys_sdk.app_settings import PersistentStoreDatabaseSetting
 
 
 class Swat2(TethysAppBase):
@@ -30,6 +31,11 @@ class Swat2(TethysAppBase):
                 controller='swat2.controllers.home'
             ),
             UrlMap(
+                name='update_selectors',
+                url='swat2/update_selectors',
+                controller='swat2.ajax_controllers.update_selectors'
+            ),
+            UrlMap(
                 name='get_upstream',
                 url='swat2/get_upstream',
                 controller='swat2.ajax_controllers.get_upstream'
@@ -45,14 +51,19 @@ class Swat2(TethysAppBase):
                 controller='swat2.ajax_controllers.timeseries'
             ),
             UrlMap(
-                name='get_HRUs',
-                url='swat2/get_hrus',
-                controller='swat2.ajax_controllers.get_hrus'
+                name='clip_rasters',
+                url='swat2/clip_rasters',
+                controller='swat2.ajax_controllers.clip_rasters'
             ),
             UrlMap(
                 name='coverage_compute',
                 url='swat2/coverage_compute',
                 controller='swat2.ajax_controllers.coverage_compute'
+            ),
+            UrlMap(
+                name='run_nasaaccess',
+                url='swat2/run_nasaaccess',
+                controller='swat2.ajax_controllers.run_nasaaccess'
             ),
             UrlMap(
                 name='save_file',
@@ -67,3 +78,15 @@ class Swat2(TethysAppBase):
         )
 
         return url_maps
+
+    def persistent_store_settings(self):
+        ps_settings = (
+            PersistentStoreDatabaseSetting(
+                name='swat_db',
+                description='Primary database for SWAT Online app.',
+                initializer='swat2.model.init_db',
+                required=True
+            ),
+        )
+
+        return ps_settings

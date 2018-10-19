@@ -2,6 +2,8 @@ import os, json
 from .model import *
 from .config import temp_workspace
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
+from sqlalchemy.sql import text
+from .app import Swat2
 
 def get_upstream(request):
     """
@@ -18,7 +20,6 @@ def get_upstream(request):
 
     json_dict = JsonResponse({'watershed': watershed, 'streamID': streamID, 'upstreams': upstreams})
     return json_dict
-
 
 def save_json(request):
     """
@@ -37,18 +38,23 @@ def save_json(request):
         json.dump(upstream_json, outfile)
 
     json_dict = JsonResponse({'id': unique_id, 'bbox': bbox, 'srs': srs})
-    if feature_type == 'basin':
-        watershed = upstream_json['watershed']
-        clip_raster(watershed, unique_id, outletID, 'lulc')
-        clip_raster(watershed, unique_id, outletID, 'soil')
     return json_dict
 
+def clip_rasters(request):
+    watershed = request.POST.get('watershed')
+    userId = request.POST.get('userId')
+    outletID = request.POST.get('outletID')
+    raster_type = request.POST.get('raster_type')
+    clip_raster(watershed, userId, outletID, raster_type)
+    json_dict = JsonResponse({'watershed': watershed, 'raster_type': raster_type})
+    return(json_dict)
 
 def timeseries(request):
     """
     Controller for the time-series plot.
     """
     # Get values passed from the timeseries function in main.js
+    watershed_id = int(request.POST.get('watershed_id'))
     watershed = request.POST.get('watershed')
     start = request.POST.get('startDate')
     end = request.POST.get('endDate')
@@ -57,19 +63,19 @@ def timeseries(request):
     monthOrDay = request.POST.get('monthOrDay')
     file_type = request.POST.get('fileType')
 
-
     if file_type == 'rch':
         # Call the correct rch data parser function based on whether the monthly or daily toggle was selected
         if monthOrDay == 'Monthly':
             timeseries_dict = extract_monthly_rch(watershed, start, end, parameters, streamID)
         else:
-            timeseries_dict = extract_daily_rch(watershed, start, end, parameters, streamID)
+            # timeseries_dict = extract_daily_rch(watershed, start, end, parameters, streamID)
+            timeseries_dict = extract_daily_rch(watershed, watershed_id, start, end, parameters, streamID)
     elif file_type == 'sub':
-        timeseries_dict= extract_sub(watershed, start, end, parameters, streamID)
+        # timeseries_dict= extract_sub(watershed, start, end, parameters, streamID)
+        timeseries_dict = extract_sub(watershed, watershed_id, start, end, parameters, streamID)
 
     # Return the json object back to main.js for timeseries plotting
     json_dict = JsonResponse(timeseries_dict)
-    print(json_dict)
     return json_dict
 
 def coverage_compute(request):
@@ -78,7 +84,6 @@ def coverage_compute(request):
     """
     uniqueID = request.POST.get('userID')
     outletID = str(request.POST.get('outletID'))
-    print(outletID)
     watershed = request.POST.get('watershed')
     raster_type = request.POST.get('raster_type')
     # clip_raster(watershed, uniqueID, outletID, raster_type)
@@ -91,13 +96,29 @@ def get_hrus(request):
     Controller for listing all HRUs that fall within a subbasin(s) boundary
     """
     upstreams = request.POST.get('upstreams')
-    watershed = request.POST.get('watershed')
+    watershed_id = request.POST.get('watershed_id')
     upstreamIDs = list(map(int, upstreams.split(',')))
-    print(upstreamIDs)
-    hru_dict = hrus(watershed, upstreamIDs)
+    upstreamIDs = tuple(upstreamIDs)
+    hru_dict = hrus(watershed_id, upstreamIDs)
     json_dict = JsonResponse(hru_dict)
     return(json_dict)
 
+def run_nasaaccess(request):
+    """
+    Controller to call nasaaccess R functions.
+    """
+    # Get selected parameters and pass them into nasaccess R scripts
+    userId = request.POST.get('userId')
+    streamId = request.POST.get('streamId')
+    start = request.POST.get('startDate')
+    d_start = str(datetime.strptime(start, '%B %d, %Y').strftime('%Y-%m-%d'))
+    end = request.POST.get(str('endDate'))
+    d_end = str(datetime.strptime(end, '%B %d, %Y').strftime('%Y-%m-%d'))
+    functions = request.POST.getlist('functions[]')
+    watershed = request.POST.get('watershed')
+    email = request.POST.get('email')
+    nasaaccess_run(userId, streamId, email, functions, watershed, d_start, d_end)
+    return HttpResponseRedirect('../')
 
 def save_file(request):
     data_json = json.loads(request.body)
@@ -114,10 +135,50 @@ def download_files(request):
         zipfolder(data_dir, data_dir)
 
         path_to_file = os.path.join(temp_workspace, uniqueID + '.zip')
-        print(path_to_file)
         f = open(path_to_file, 'r')
         myfile = File(f)
 
         response = HttpResponse(myfile, content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=' + uniqueID + '.zip'
         return response
+
+def update_selectors(request):
+    watershed_id = request.POST.get('watershed_id')
+    selector_dict = {'rch':{}, 'sub':{}}
+    Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
+    session = Session()
+
+    dqrch = """SELECT min(month_day_year),max(month_day_year) FROM output_rch_day WHERE watershed_id={0}""".format(
+        watershed_id)
+    rchdex = session.execute(text(dqrch)).fetchall()
+    rch_start = rchdex[0][0].strftime("%b %d, %Y")
+    selector_dict['rch']['start'] = rch_start
+    rch_end = rchdex[0][1].strftime("%b %d, %Y")
+    selector_dict['rch']['end'] = rch_end
+
+    dqsub = """SELECT min(month_day_year),max(month_day_year) FROM output_sub WHERE watershed_id={0}""".format(
+        watershed_id)
+    subdex = session.execute(text(dqsub)).fetchall()
+    sub_start = subdex[0][0].strftime("%b %d, %Y")
+    selector_dict['sub']['start'] = sub_start
+    sub_end = subdex[0][1].strftime("%b %d, %Y")
+    selector_dict['sub']['end'] = sub_end
+
+    vqsub = """SELECT DISTINCT var_name FROM output_sub WHERE watershed_id={0}""".format(watershed_id)
+    subvex = session.execute(text(vqsub)).fetchall()
+    sub_options = []
+    for var in subvex:
+        option = (sub_param_names[var[0]], var[0])
+        sub_options.append(option)
+    selector_dict['sub']['vars'] = sub_options
+
+    vqsub = """SELECT DISTINCT var_name FROM output_rch_day WHERE watershed_id={0}""".format(watershed_id)
+    subvex = session.execute(text(vqsub)).fetchall()
+    rch_options = []
+    for var in subvex:
+        option = (rch_param_names[var[0]], var[0])
+        rch_options.append(option)
+    selector_dict['rch']['vars'] = rch_options
+
+    json_dict = JsonResponse(selector_dict)
+    return json_dict

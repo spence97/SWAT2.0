@@ -1,9 +1,17 @@
-#app-content-wrapper #app-content{
+
+#app-content-wrapper #app-content {
+    padding-bottom:0;
+    margin:0;
     height: 100%;
+}
+#app-content-wrapper #app-content #app-actions{
+    display:none;
 }
 
 #inner-app-content {
-    padding: 0
+    padding:0;
+    margin:0;
+    height: 100%;
 }
 
 #map_container{
@@ -16,12 +24,17 @@
     height:100%;
 }
 
-#data-modal .modal-dialog {
-  top: 8%;
-  width: 90%;
-  height: 100%;
-  padding: 0px;
-  margin: auto;
+#data-modal .modal-dialog{
+    position: fixed;
+    display: table; //This is important
+    overflow-y: auto;
+    overflow-x: auto;
+    width: 90%;
+    min-width: 90%;
+    top: 8%;
+    bottom: 0;
+    right: 0;
+    left: 0;
 }
 
 .panel-body {
@@ -30,7 +43,7 @@
 
 .left {
     height: 100%;
-    width: 70%;
+    width: 65%;
     padding-top: 10px;
     padding-right: 10px;
     float: left;
@@ -103,8 +116,9 @@
 }
 
 .right {
+    padding: 5px;
     height: 500px;
-    width: 30%;
+    width: 35%;
     float: right;
 }
 
@@ -194,8 +208,8 @@
 .view-file {
     position: absolute;
     z-index: 10;
-    top: 48%;
-    left: 48%;
+    top: 50%;
+    left: 30%;
 }
 
 #tsData {

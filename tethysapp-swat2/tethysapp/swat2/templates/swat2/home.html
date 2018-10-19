@@ -21,6 +21,9 @@
 {% endblock %}
 
 {% block header_buttons %}
+  <div class="header-button glyphicon-button" data-toggle="tooltip" data-placement="bottom" title="Panel">
+    <a data-toggle="modal" data-target="#data-modal"><span class="glyphicon glyphicon-file"></span></a>
+  </div>
   <div class="header-button glyphicon-button" data-toggle="tooltip" data-placement="bottom" title="Help">
     <a data-toggle="modal" data-target="#help-modal"><span class="glyphicon glyphicon-question-sign"></span></a>
   </div>
@@ -29,7 +32,7 @@
 {% block app_navigation_items %}
     <br>
     <h5>Select Watershed</h5>
-      {%gizmo watershed_select %}
+      {% gizmo watershed_select %}
     <br>
     <h5>Toggle Layers</h5>
     <div class="basinToggle">
@@ -72,7 +75,6 @@
           <ul class="nav nav-tabs" role="tablist">
               <li role="presentation" id="rch_link" class = "active"><a id="rch_tab_link" href="#rch_tab" aria-controls="rch_tab" role="tab" data-toggle="tab">RCH Model Outputs</a></li>
               <li role="presentation" id="sub_link"><a id="sub_tab_link" href="#sub_tab" aria-controls="sub_tab" role="tab" data-toggle="tab">Sub Model Outputs</a></li>
-              <li role="presentation" id="hru_link"><a id="hru_tab_link" href="#hru_tab" aria-controls="hru_tab" role="tab" data-toggle="tab">HRU Model Outputs</a></li>
               <li role="presentation" id="lulc_link"><a id="lulc_tab_link" href="#lulc_tab" aria-controls="lulc_tab" role="tab" data-toggle="tab">LULC Data</a></li>
               <li role="presentation" id="soil_link"><a id="soil_tab_link" href="#soil_tab" aria-controls="soil_tab" role="tab" data-toggle="tab">Soil Data</a></li>
               <li role="presentation" id="nasaaccess_link"><a id="nasaaccess_tab_link" href="#nasaaccess_tab" aria-controls="nasaaccess_tab" role="tab" data-toggle="tab">nasaaccess</a></li>
@@ -92,11 +94,6 @@
                         <div id="rch_var_picker" class="var_picker">
                             {% gizmo rch_var_select %}
                         </div>
-                        <div class="monthDayToggle">
-                            <label>
-                                <input id="toggle_switch" type="checkbox" checked data-toggle="toggle" data-on="Monthly" data-off="Daily" data-onstyle="success" data-offstyle="danger">
-                            </label>
-                        </div>
                         <div id="rch_date_picker" class="date_picker">
                             <div class="input-group input-daterange">
                                 {% gizmo rch_start_pick %}
@@ -107,7 +104,7 @@
                     </div>
                     <br>
                     <div id="rch_chart_container" class="view_chart hidden"></div>
-                    <div class="flex-container-row"><img id="view-reach-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
+                    <div class="flex-container-row"><img id="view-reach-loading" class="view-file hidden" src="/static/swat2/images/loader.gif" style="margin: auto"/></div>
                 </div>
                 <div class="right">
                   <div id="rch_map" class="rch_map"></div>
@@ -135,52 +132,17 @@
                     </div>
                     <br>
                     <div id="sub_chart_container" class="view_chart hidden"></div>
-                    <div class="flex-container-row"><img id="view-sub-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
+                    <div class="flex-container-row"><img id="view-sub-loading" class="view-file hidden" src="/static/swat2/images/loader.gif" style="margin: auto"/></div>
                 </div>
                 <div class="right">
                   <div id="sub_map" class="sub_map"></div>
                 </div>
               </div>
             </div>
-            <div role="tabpanel" class="tab-pane" id="hru_tab">
-              <div class="panel-body">
-                <h6 id="error" class="hidden"></h6>
-                <div class="left">
-                    <div class="alert alert-success hidden" id="hru_save_success">
-                        <strong>Success!</strong> This data has been saved to your cart.
-                    </div>
-                    <div class="queryItems">
-                        <div id="hru_picker" class="var_picker">
-                            {% gizmo hru_select %}
-                        </div>
-                        <div id="sub_var_picker" class="var_picker">
-                            {% gizmo hru_var_select %}
-                        </div>
-                        <div id="sub_date_picker" class="date_picker">
-                            <div class="input-group input-daterange">
-                                {% gizmo hru_start_pick %}
-                                <div class="input-group-addon">to</div>
-                                {% gizmo hru_end_pick %}
-                            </div>
-                        </div>
-                        <button type="button" id="hru_list" class="btn btn-info">List HRUs</button>
-
-                    </div>
-
-                    <br>
-                    <div id="hru_chart_container" class="view_chart hidden"></div>
-                    <div id="hru_table_container" class="view_table hidden"></div>
-                    <div class="flex-container-row"><img id="view-hru-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
-                </div>
-                <div class="right">
-                  <div id="hru_map" class="hru_map"></div>
-                </div>
-              </div>
-            </div>
             <div role="tabpanel" class="tab-pane" id="lulc_tab">
               <div class="panel-body">
                 <div id="lulc_data_container" class="lulc_data_container">
-                  <div class="flex-container-row"><img id="lulc-pie-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
+                  <div class="flex-container-row"><img id="lulc-pie-loading" class="view-file hidden" src="/static/swat2/images/loader.gif" style="margin: auto"/></div>
                   <h6 id="error" class="hidden"></h6>
                   <div id="lulcPieContainer" class="view_chart hidden"></div>
                 </div>
@@ -192,7 +154,7 @@
             <div role="tabpanel" class="tab-pane" id="soil_tab">
               <div class="panel-body">
                 <div id="soil_data_container" class="soil_data_container">
-                  <div class="flex-container-row"><img id="soil-pie-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>
+                  <div class="flex-container-row"><img id="soil-pie-loading" class="view-file hidden" src="/static/swat2/images/loader.gif" style="margin: auto"/></div>
                   <h6 id="error" class="hidden"></h6>
                   <div id="soilPieContainer" class="view_chart hidden"></div>
                 </div>
@@ -285,7 +247,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <form class="form" method="post" enctype="multipart/form-data" action="download_files/">
+                    <form class="form" method="post" enctype="multipart/form-data" action="{% url 'swat2:download_files' %}">
                         {% csrf_token %}
                         <input id="userID" class="hidden" type="text" name="userID">
                         <input type="submit" value="Download">
@@ -293,22 +255,9 @@
                 </div>
             </div>
           </div>
-
-
-          <!--<div class="flex-container-row"><img id="view-file-loading" class="view-file hidden" src="/static/swat/images/loader.gif" style="margin: auto"/></div>-->
-          <!--<h6 id="error" class="hidden"></h6>-->
-          <!--<div id="container" class="view_chart hidden"></div>-->
         </div>
         <div class="modal-footer">
           <div class="data-buttons">
-            <!--<div id="download_csv" class="btn-group hidden" role="group">-->
-              <!--<a class="btn btn-success" role="button" id="submit-download-csv" href="{% url 'swat:download_csv' %}">-->
-                <!--<span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Download .csv</a>-->
-            <!--</div>-->
-            <!--<div id="download_ascii" class="btn-group hidden" role="group">-->
-              <!--<a class="btn btn-success" role="button" id="submit-download-ascii" href="{% url 'swat:download_ascii' %}">-->
-                <!--<span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Download ASCII</a>-->
-            <!--</div>-->
             <div id="rch_compute" class="btn-group" role="group">
               <a class="btn btn-primary" role="button" id="rch_compute">
                 <span class="glyphicon glyphicon-open-file"></span>&nbsp;&nbsp;Get RCH Data</a>
@@ -317,16 +266,20 @@
               <a class="btn btn-primary" role="button" id="sub_compute">
                 <span class="glyphicon glyphicon-open-file"></span>&nbsp;&nbsp;Get SUB Data</a>
             </div>
-            <div id="hru_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-primary" role="button" id="hru_extract">
-                <span class="glyphicon glyphicon-open-file"></span>&nbsp;&nbsp;Get HRU Data</a>
+            <div id="lulc_clip" class="btn-group hidden" role="group">
+              <a class="btn btn-primary" role="button" id="clip_lulc">
+                <span class="glyphicon glyphicon-tree-deciduous"></span>&nbsp;&nbsp;Clip LULC Raster</a>
             </div>
             <div id="lulc_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-primary" role="button" id="lulc_comp">
+              <a class="btn btn-success" role="button" id="lulc_comp">
                 <span class="glyphicon glyphicon-tree-deciduous"></span>&nbsp;&nbsp;Compute LULC Statistics</a>
             </div>
+            <div id="soil_clip" class="btn-group hidden" role="group">
+              <a class="btn btn-primary" role="button" id="clip_soil">
+                <span class="glyphicon glyphicon-grain"></span>&nbsp;&nbsp;Clip Soil Raster</a>
+            </div>
             <div id="soil_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-primary" role="button" id="soil_comp">
+              <a class="btn btn-success" role="button" id="soil_comp">
                 <span class="glyphicon glyphicon-grain"></span>&nbsp;&nbsp;Compute Soil Statistics</a>
             </div>
             <div id="saveData" class="btn-group hidden" role="group">
@@ -341,21 +294,27 @@
     </div>
   </div>
 
-  <!-- Watershed Summary Modal -->
-  <div class="modal fade" id="summary-modal" tabindex="-1" role="dialog" aria-labelledby="summary-modal-label">
+<!-- Contact Information Modal -->
+  <div class="modal fade" id="cont-modal" tabindex="-1" role="dialog" aria-labelledby="cont-modal-label">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
-          <div id="tabs" class="modal-body">
-            <!-- Nav tabs -->
-              <ul class="nav nav-tabs" role="tablist">
-                  <li role="presentation" id="overview_link" class = "active"><a id="overview_tab_link" href="#overview_tab" aria-controls="overview_tab" role="tab" data-toggle="tab">Overview</a></li>
-                  <li role="presentation" id="annsum_link"><a id="annsum_tab_link" href="#annsum_tab" aria-controls="annsub_tab" role="tab" data-toggle="tab">Annual Summary</a></li>
-                  <!--<li role="presentation" id="annsum_link"><a id="annsum_tab_link" href="#annsum_tab" aria-controls="annsub_tab" role="tab" data-toggle="tab">Annual Summary</a></li>-->
-              </ul>
-          </div>
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          <h5 class="modal-title" id="cont-modal-label">Contact Information</h5>
+        </div>
+        <div class="modal-body">
+            <p>Depending on the watershed size and the date range you selected,
+                the nasaaccess process may take some time.
+                Please provide your email here and we will contact you with a
+                6 digit access code for downloading your data when the process is complete.</p>
+            <label for="id_email">Email Address:</label>
+            <input id="id_email" type="email" placeholder="Email" size="30" required<input>
+            <p>Your email will only remain in our database until your access code has been sent out.
+                The access code you receive will then be valid for 3 days.</p>
+        </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+            <button class="btn btn-primary" id="na_submit">Submit</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
         </div>
       </div>
     </div>

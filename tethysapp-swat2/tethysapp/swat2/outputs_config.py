@@ -47,7 +47,7 @@ rch_options = [('Stream Inflow (cms)', 'FLOW_INcms'),
 
 
 
-rch_param_names = {'':'', 'RCH':'Reach', 'GIS':'GIS',  'MON':'Month', 'DA':'Day', 'YR':'Year', 'AREAkm2':'Area (km2)',
+rch_param_names = {'':'', 'RCH':'Reach', 'GIS':'GIS',  'MO':'Month', 'DA':'Day', 'YR':'Year', 'AREAkm2':'Area (km2)',
                'FLOW_INcms':'Inflow (cms)', 'FLOW_OUTcms':'Outflow (cms)', 'EVAPcms':'Evaporation (cms)',
                'TLOSScms':'Transpiration Loss (cms)', 'SED_INtons':'Sediment Inflow (tons)',
                'SED_OUTtons':'Sediment Outflow (tons)',

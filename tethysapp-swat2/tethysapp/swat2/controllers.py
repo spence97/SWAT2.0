@@ -2,35 +2,42 @@ from django.shortcuts import *
 from tethys_sdk.gizmos import *
 from .config import data_path
 from datetime import datetime
-from .outputs_config import rch_options, sub_options, hru_options
+from .outputs_config import rch_param_names, sub_param_names
+from .app import Swat2
+from .model import *
 import os
+from sqlalchemy.sql import text
 
 def home(request):
     """
     Controller for the Output Viewer page.
     """
-    # Get available watersheds (with rch data and wms capabilities) and set select_watershed options
+    # Get available watersheds and set select_watershed options
+    Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
+    session = Session()
+    # Query DB for regions
+    wqr = """SELECT * FROM watershed"""
+    watersheds = session.execute(text(wqr)).fetchall()
+    watershed_id = watersheds[0].id
 
     watershed_options = []
-    watershed_list = os.listdir(data_path)
-    for f in watershed_list:
-        if f.startswith('.'):
-            pass
-        elif f.endswith('.xml'):
-            pass
-        else:
-            name = f.replace('_', ' ').title()
-            value = f
-            if name not in watershed_options:
-                watershed_options.append((name,value))
+
+    for f in watersheds:
+        name = f.name
+        name = name.replace('_', ' ').title()
+        value = f.name
+        id = f.id
+        val = str(id)+'|'+str(value)
+        watershed_options.append((name,val))
 
 
-    # set the initial date picker options
-    rch_start = 'January 2005'
-    rch_end = 'December 2015'
-    rch_format = 'MM yyyy'
-    rch_startView = 'decade'
-    rch_minView = 'months'
+    watershed_select = SelectInput(name='watershed_select',
+                                   multiple=False,
+                                   original=False,
+                                   options=watershed_options,
+                                   initial=[('Lower Mekong', 'lower_mekong')],
+                                   )
+
 
     na_start = 'Jan 01, 2000'
     na_end = datetime.now().strftime("%b %d, %Y")
@@ -38,88 +45,33 @@ def home(request):
     na_startView = 'decade'
     na_minView = 'days'
 
-    sub_start = 'January 01, 2001'
-    sub_end = 'December 31, 2015'
-    sub_format = 'MM d, yyyy'
-    sub_startView = 'decade'
-    sub_minView = 'days'
-
-    hru_start = 'January 01, 2001'
-    hru_end = 'December 31, 2015'
-    hru_format = 'MM d, yyyy'
-    hru_startView = 'decade'
-    hru_minView = 'days'
-
-    watershed_select = SelectInput(name='watershed_select',
-                                   multiple=False,
-                                   original=False,
-                                   options=watershed_options,
-                                   initial=[('Lower Mekong', 'lower_mekong')],
-                                   # select2_options={'placeholder': 'Select a Watershed to View',
-                                   #                  'allowClear': False},
-                                   )
 
     rch_start_pick = DatePicker(name='rch_start_pick',
                             autoclose=True,
-                            format=rch_format,
-                            min_view_mode=rch_minView,
-                            start_date=rch_start,
-                            end_date=rch_end,
-                            start_view=rch_startView,
                             today_button=False,
-                            initial='Start Date')
+                            initial='Start Date',
+                            classes = 'rch_date start_date'
+                            )
 
     rch_end_pick = DatePicker(name='rch_end_pick',
                           autoclose=True,
-                          format=rch_format,
-                          min_view_mode=rch_minView,
-                          start_date=rch_start,
-                          end_date=rch_end,
-                          start_view=rch_startView,
                           today_button=False,
-                          initial='End Date'
+                          initial='End Date',
+                          classes = 'rch_date end_date'
                           )
 
     sub_start_pick = DatePicker(name='sub_start_pick',
                                 autoclose=True,
-                                format=sub_format,
-                                min_view_mode=sub_minView,
-                                start_date=sub_start,
-                                end_date=sub_end,
-                                start_view=sub_startView,
                                 today_button=False,
-                                initial='Start Date')
+                                initial='Start Date',
+                                classes='sub_date start_date'
+                                )
 
     sub_end_pick = DatePicker(name='sub_end_pick',
                               autoclose=True,
-                              format=sub_format,
-                              min_view_mode=sub_minView,
-                              start_date=sub_start,
-                              end_date=sub_end,
-                              start_view=sub_startView,
                               today_button=False,
-                              initial='End Date'
-                              )
-
-    hru_start_pick = DatePicker(name='hru_start_pick',
-                                autoclose=True,
-                                format=hru_format,
-                                min_view_mode=hru_minView,
-                                start_date=hru_start,
-                                end_date=hru_end,
-                                start_view=hru_startView,
-                                today_button=False,
-                                initial='Start Date')
-
-    hru_end_pick = DatePicker(name='hru_end_pick',
-                              autoclose=True,
-                              format=hru_format,
-                              min_view_mode=hru_minView,
-                              start_date=hru_start,
-                              end_date=hru_end,
-                              start_view=hru_startView,
-                              today_button=False,
-                              initial='End Date'
+                              initial='End Date',
+                              classes='sub_date end_date'
                               )
 
     na_start_pick = DatePicker(name='na_start_pick',
@@ -146,35 +98,21 @@ def home(request):
     rch_var_select = SelectInput(name='rch_var_select',
                                multiple=True,
                                original=False,
-                               options=rch_options,
+                               classes='rch_var',
                                select2_options={'placeholder': 'Select Variable(s)',
                                                 'allowClear': False},
+
                                )
 
     sub_var_select = SelectInput(name='sub_var_select',
                                  multiple=True,
                                  original=False,
-                                 options=sub_options,
+                                 classes='sub_var',
                                  select2_options={'placeholder': 'Select Variable(s)',
                                                   'allowClear': False},
                                  )
 
-    hru_var_select = SelectInput(name='hru_var_select',
-                                 multiple=True,
-                                 original=False,
-                                 options=hru_options,
-                                 select2_options={'placeholder': 'Select Variable(s)',
-                                                  'allowClear': False},
-                                 )
-
-    hru_select = SelectInput(name='hru_select',
-                             multiple=False,
-                             original=False,
-                             options=[],
-                             select2_options={'placeholder': 'Select HRU',
-                                              'allowClear': False},
-                             )
-
+    session.close()
 
     context = {
         'rch_start_pick': rch_start_pick,
@@ -183,13 +121,9 @@ def home(request):
         'na_end_pick': na_end_pick,
         'sub_start_pick': sub_start_pick,
         'sub_end_pick': sub_end_pick,
-        'hru_start_pick': hru_start_pick,
-        'hru_end_pick': hru_end_pick,
         'rch_var_select': rch_var_select,
         'sub_var_select': sub_var_select,
-        'hru_var_select': hru_var_select,
         'watershed_select': watershed_select,
-        'hru_select': hru_select
     }
 
     return render(request, 'swat2/home.html', context)
