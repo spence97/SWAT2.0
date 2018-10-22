@@ -84,12 +84,10 @@ def upload_swat_outputs(output_path, watershed_name):
                         dt = datetime.date(int(columns[5]), int(columns[3]), int(columns[4]))
                         var_name = item
                         val = float(columns[sub_column_list.index(item)])
-                        cur.execute("""INSERT INTO output_sub (watershed_id, month_day_year, sub_id, var_name, val)
+                        cur.execute("""INSERT INTO output_sub (watershed_id, year_month_day, sub_id, var_name, val)
                              VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, sub, var_name, val))
 
                     conn.commit()
-                else:
-                    break
 
         if file.endswith('.rch'):
             if 'daily' in file:
@@ -109,12 +107,10 @@ def upload_swat_outputs(output_path, watershed_name):
                             dt = datetime.date(int(columns[5]), int(columns[3]), int(columns[4]))
                             var_name = item
                             val = float(columns[rchday_column_list.index(item)])
-                            cur.execute("""INSERT INTO output_rch_day (watershed_id, month_day_year, reach_id, var_name, val)
+                            cur.execute("""INSERT INTO output_rch_day (watershed_id, year_month_day, reach_id, var_name, val)
                                  VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, reach, var_name, val))
 
                         conn.commit()
-                    else:
-                        break
 
     conn.close()
 

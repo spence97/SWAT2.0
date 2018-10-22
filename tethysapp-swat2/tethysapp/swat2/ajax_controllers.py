@@ -148,7 +148,7 @@ def update_selectors(request):
     Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
     session = Session()
 
-    dqrch = """SELECT min(month_day_year),max(month_day_year) FROM output_rch_day WHERE watershed_id={0}""".format(
+    dqrch = """SELECT min(year_month_day),max(year_month_day) FROM output_rch_day WHERE watershed_id={0}""".format(
         watershed_id)
     rchdex = session.execute(text(dqrch)).fetchall()
     rch_start = rchdex[0][0].strftime("%b %d, %Y")
@@ -156,7 +156,7 @@ def update_selectors(request):
     rch_end = rchdex[0][1].strftime("%b %d, %Y")
     selector_dict['rch']['end'] = rch_end
 
-    dqsub = """SELECT min(month_day_year),max(month_day_year) FROM output_sub WHERE watershed_id={0}""".format(
+    dqsub = """SELECT min(year_month_day),max(year_month_day) FROM output_sub WHERE watershed_id={0}""".format(
         watershed_id)
     subdex = session.execute(text(dqsub)).fetchall()
     sub_start = subdex[0][0].strftime("%b %d, %Y")
