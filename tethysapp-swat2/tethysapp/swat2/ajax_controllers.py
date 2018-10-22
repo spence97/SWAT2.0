@@ -14,7 +14,7 @@ def get_upstream(request):
     unique_id = request.POST.get('id')
     unique_path = os.path.join(temp_workspace, unique_id)
     if not os.path.exists(unique_path):
-        os.makedirs(unique_path, 0777)
+        os.makedirs(unique_path, 0o777)
 
     upstreams = get_upstreams(watershed, streamID)
 

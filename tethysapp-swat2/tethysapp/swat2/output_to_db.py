@@ -1,18 +1,12 @@
 import os
 import psycopg2
 import datetime
-import re
 
 
 output_path = '/home/ubuntu/swat_data/lower_mekong/Outputs'
 watershed_name = 'lower_mekong'
-hru_vars = ['PRECIPmm', 'IRRmm', 'PETmm', 'ETmm', 'SW_INITmm', 'SW_ENDmm', 'GW_Qmm']
-sub_vars = ['PRECIPmm', 'PETmm', 'ETmm', 'SWmm', 'SURQmm']
-rch_vars = ['FLOW_INcms', 'FLOW_OUTcms', 'EVAPcms', 'ORGN_INkg', 'ORGN_OUTkg']
-
-
-
-
+sub_vars = ['PRECIPmm', 'PETmm', 'ETmm', 'SWmm', 'PERCmm', 'SURQmm', 'GW_Qmm', 'WYLDmm', 'SYLDt/ha']
+rch_vars = ['FLOW_INcms', 'FLOW_OUTcms', 'EVAPcms', 'SED_INtons', 'SED_OUTtons', 'SEDCONCmg/kg', 'ORGN_INkg', 'ORGN_OUTkg', 'DISOX_INkg', 'DISOX_OUTkg']
 
 
 
@@ -58,11 +52,8 @@ def upload_swat_outputs(output_path, watershed_name):
         print(records)
     watershed_id = records[0][0]
     print(watershed_id)
-    year_one = 2001
 
     for file in os.listdir(output_path):
-        print(file)
-
         if file.endswith('.sub'):
             print('sub')
             sub_path = os.path.join(output_path, file)
@@ -70,7 +61,6 @@ def upload_swat_outputs(output_path, watershed_name):
             for skip_line in f:
                 if 'AREAkm2' in skip_line:
                     break
-
             for num, line in enumerate(f, 1):
                 line = str(line.strip())
                 columns = line.split()
@@ -78,16 +68,15 @@ def upload_swat_outputs(output_path, watershed_name):
                     split = columns[0]
                     columns[0] = split[:6]
                     columns.insert(1, split[6:])
-                if int(columns[5]) == year_one:
-                    for idx, item in enumerate(sub_vars):
-                        sub = int(columns[1])
-                        dt = datetime.date(int(columns[5]), int(columns[3]), int(columns[4]))
-                        var_name = item
-                        val = float(columns[sub_column_list.index(item)])
-                        cur.execute("""INSERT INTO output_sub (watershed_id, year_month_day, sub_id, var_name, val)
-                             VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, sub, var_name, val))
+                for idx, item in enumerate(sub_vars):
+                    sub = int(columns[1])
+                    dt = datetime.date(int(columns[5]), int(columns[3]), int(columns[4]))
+                    var_name = item
+                    val = float(columns[sub_column_list.index(item)])
+                    cur.execute("""INSERT INTO output_sub (watershed_id, year_month_day, sub_id, var_name, val)
+                         VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, sub, var_name, val))
 
-                    conn.commit()
+                conn.commit()
 
         if file.endswith('.rch'):
             if 'daily' in file:
@@ -97,20 +86,18 @@ def upload_swat_outputs(output_path, watershed_name):
                 for skip_line in f:
                     if 'AREAkm2' in skip_line:
                         break
-
                 for num, line in enumerate(f, 1):
                     line = str(line.strip())
                     columns = line.split()
-                    if int(columns[5]) == year_one:
-                        for idx, item in enumerate(rch_vars):
-                            reach = int(columns[1])
-                            dt = datetime.date(int(columns[5]), int(columns[3]), int(columns[4]))
-                            var_name = item
-                            val = float(columns[rchday_column_list.index(item)])
-                            cur.execute("""INSERT INTO output_rch_day (watershed_id, year_month_day, reach_id, var_name, val)
-                                 VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, reach, var_name, val))
+                    for idx, item in enumerate(rch_vars):
+                        reach = int(columns[1])
+                        dt = datetime.date(int(columns[5]), int(columns[3]), int(columns[4]))
+                        var_name = item
+                        val = float(columns[rchday_column_list.index(item)])
+                        cur.execute("""INSERT INTO output_rch_day (watershed_id, year_month_day, reach_id, var_name, val)
+                             VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, reach, var_name, val))
 
-                        conn.commit()
+                    conn.commit()
 
     conn.close()
 
