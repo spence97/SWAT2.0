@@ -544,9 +544,18 @@ def nasaaccess_run(userId, streamId, email, functions, watershed, start, end):
 
     functions = ','.join(functions)
 
+    def demote(user_uid, user_gid):
+        def result():
+            report_ids('starting demotion')
+            os.setgid(user_gid)
+            os.setuid(user_uid)
+            report_ids('finished demotion')
+
+        return result
+
     #pass user's inputs and file paths to the nasaaccess python function that will run detached from the app
     run = subprocess.call(["/home/ubuntu/miniconda3/envs/nasaaccess/bin/python3", nasaaccess_script, email, functions, unique_id,
-                            shp_path, dem_path, unique_path, tempdir, start, end])
+                            shp_path, dem_path, unique_path, tempdir, start, end], preexec_fn=demote(user_uid, user_gid))
 
     return unique_id
 
