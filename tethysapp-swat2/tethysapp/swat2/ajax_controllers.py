@@ -14,7 +14,8 @@ def get_upstream(request):
     unique_id = request.POST.get('id')
     unique_path = os.path.join(temp_workspace, unique_id)
     if not os.path.exists(unique_path):
-        os.makedirs(unique_path, 0o777)
+        os.makedirs(unique_path)
+        os.chmod(unique_path, 0o777)
 
     upstreams = get_upstreams(watershed, streamID)
 
@@ -148,7 +149,7 @@ def update_selectors(request):
     Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
     session = Session()
 
-    dqrch = """SELECT min(year_month_day),max(year_month_day) FROM output_rch_day WHERE watershed_id={0}""".format(
+    dqrch = """SELECT rchday_start,rchday_end FROM watershed_info WHERE watershed_id={0}""".format(
         watershed_id)
     rchdex = session.execute(text(dqrch)).fetchall()
     rch_start = rchdex[0][0].strftime("%b %d, %Y")
@@ -156,7 +157,7 @@ def update_selectors(request):
     rch_end = rchdex[0][1].strftime("%b %d, %Y")
     selector_dict['rch']['end'] = rch_end
 
-    dqsub = """SELECT min(year_month_day),max(year_month_day) FROM output_sub WHERE watershed_id={0}""".format(
+    dqsub = """SELECT sub_start,sub_end FROM watershed_info WHERE watershed_id={0}""".format(
         watershed_id)
     subdex = session.execute(text(dqsub)).fetchall()
     sub_start = subdex[0][0].strftime("%b %d, %Y")
@@ -164,21 +165,24 @@ def update_selectors(request):
     sub_end = subdex[0][1].strftime("%b %d, %Y")
     selector_dict['sub']['end'] = sub_end
 
-    vqsub = """SELECT DISTINCT var_name FROM output_sub WHERE watershed_id={0}""".format(watershed_id)
+    vqsub = """SELECT sub_vars FROM watershed_info WHERE watershed_id={0}""".format(watershed_id)
     subvex = session.execute(text(vqsub)).fetchall()
+    subvex = subvex[0][0].split(',')
     sub_options = []
     for var in subvex:
-        option = (sub_param_names[var[0]], var[0])
+        option = (sub_param_names[str(var)], str(var))
         sub_options.append(option)
     selector_dict['sub']['vars'] = sub_options
 
-    vqsub = """SELECT DISTINCT var_name FROM output_rch_day WHERE watershed_id={0}""".format(watershed_id)
-    subvex = session.execute(text(vqsub)).fetchall()
+    vqrch = """SELECT rch_vars FROM watershed_info WHERE watershed_id={0}""".format(watershed_id)
+    rchvex = session.execute(text(vqrch)).fetchall()
+    rchvex = rchvex[0][0].split(',')
     rch_options = []
-    for var in subvex:
-        option = (rch_param_names[var[0]], var[0])
+    for var in rchvex:
+        option = (rch_param_names[var], var)
         rch_options.append(option)
     selector_dict['rch']['vars'] = rch_options
 
+    session.close()
     json_dict = JsonResponse(selector_dict)
     return json_dict

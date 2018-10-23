@@ -54,7 +54,7 @@ class Watershed_Info(Base):
         self.rchday_start = rchday_start
         self.rchday_end = rchday_end
         self.rchmonth_start = rchmonth_start
-        self.rchmonth_end = rchmonth_start
+        self.rchmonth_end = rchmonth_end
         self.rch_vars = rch_vars
         self.sub_start = sub_start
         self.sub_end = sub_end
@@ -368,7 +368,7 @@ def extract_daily_rch(watershed, watershed_id, start, end, parameters, reachid):
         param_name = rch_param_names[parameters[x]]
         rchDict['Names'].append(param_name)
 
-        rch_dqr = """SELECT val FROM output_rch_day WHERE watershed_id={0} AND reach_id={1} AND var_name='{2}' AND month_day_year BETWEEN '{3}' AND '{4}'; """.format(
+        rch_dqr = """SELECT val FROM output_rch_day WHERE watershed_id={0} AND reach_id={1} AND var_name='{2}' AND year_month_day BETWEEN '{3}' AND '{4}'; """.format(
             watershed_id, reachid, parameters[x], dt_start, dt_end)
         data = session.execute(text(rch_dqr)).fetchall()
 
@@ -380,7 +380,7 @@ def extract_daily_rch(watershed, watershed_id, start, end, parameters, reachid):
 
         rchDict['Values'][x] = ts
         rchDict['Names'].append(param_name)
-
+    session.close()
     return rchDict
 
 def extract_sub(watershed, watershed_id, start, end, parameters, subid):
@@ -406,7 +406,7 @@ def extract_sub(watershed, watershed_id, start, end, parameters, subid):
         param_name = sub_param_names[parameters[x]]
         subDict['Names'].append(param_name)
 
-        rch_dqr = """SELECT val FROM output_sub WHERE watershed_id={0} AND sub_id={1} AND var_name='{2}' AND month_day_year BETWEEN '{3}' AND '{4}'; """.format(
+        rch_dqr = """SELECT val FROM output_sub WHERE watershed_id={0} AND sub_id={1} AND var_name='{2}' AND year_month_day BETWEEN '{3}' AND '{4}'; """.format(
             watershed_id, subid, parameters[x], dt_start, dt_end)
         data = session.execute(text(rch_dqr)).fetchall()
 
@@ -418,7 +418,7 @@ def extract_sub(watershed, watershed_id, start, end, parameters, subid):
 
         subDict['Values'][x] = ts
         subDict['Names'].append(param_name)
-
+    session.close()
     return subDict
 
 
@@ -539,10 +539,8 @@ def nasaaccess_run(userId, streamId, email, functions, watershed, start, end):
     #create a new folder to store the user's requested data
     unique_id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
     unique_path = os.path.join(nasaaccess_path, 'outputs', unique_id, 'nasaaccess_data')
-    os.makedirs(unique_path, 0777)
     #create a temporary directory to store all intermediate data while nasaaccess functions run
     tempdir = os.path.join(nasaaccess_temp, unique_id)
-    os.makedirs(tempdir, 0777)
 
     functions = ','.join(functions)
 
