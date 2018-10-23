@@ -8,7 +8,7 @@ from dateutil import relativedelta
 from collections import OrderedDict
 import numpy as np
 import pandas as pd
-import os, subprocess, requests, fiona, json, zipfile, random, string
+import os, subprocess, requests, fiona, json, zipfile, random, string, time
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, Date
 from sqlalchemy.orm import sessionmaker
@@ -443,10 +443,18 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
     input_tif = os.path.join(data_path, watershed, 'Land', raster_type + '.tif')
     output_tif = os.path.join(temp_workspace, uniqueID, watershed + '_upstream_'+ raster_type + '_' + outletID + '.tif')
 
+    def demote(user_uid, user_gid):
+        def result():
+            os.setgid(user_gid)
+            os.setuid(user_uid)
+
+        return result
+
     subprocess.call(
         'gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES -cutline {0} -crop_to_cutline -dstalpha {1} {2}'
-            .format(input_json, input_tif, output_tif), shell=True)
+            .format(input_json, input_tif, output_tif), preexec_fn=demote(1000, 1000), shell=True)
 
+    time.sleep(30)
     storename = watershed + '_upstream_' + raster_type + '_' + outletID
     headers = {'Content-type': 'image/tiff', }
     user = geoserver['user']
