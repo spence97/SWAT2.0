@@ -232,15 +232,15 @@ class STREAM_CONNECT(Base):
 
     id = Column(Integer, primary_key=True)
     watershed_id = Column(Integer, ForeignKey('watershed.id'))
-    streamID = Column(Integer)
+    stream_id = Column(Integer)
     to_node = Column(Integer)
 
-    def __init__(self, watershed_id, streamID, to_node):
+    def __init__(self, watershed_id, stream_id, to_node):
         """
         Constructor for the table
         """
         self.watershed_id = watershed_id
-        self.streamID = streamID
+        self.stream_id = stream_id
         self.to_node = to_node
 
 def init_db(engine,first_time):
@@ -454,7 +454,6 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
         'gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES -cutline {0} -crop_to_cutline -dstalpha {1} {2}'
             .format(input_json, input_tif, output_tif), preexec_fn=demote(1000, 1000), shell=True)
 
-    time.sleep(30)
     storename = watershed + '_upstream_' + raster_type + '_' + outletID
     headers = {'Content-type': 'image/tiff', }
     user = geoserver['user']

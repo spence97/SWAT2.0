@@ -22,44 +22,29 @@ rchday_column_list = ['', 'RCH', 'GIS', 'MO', 'DA', 'YR', 'AREAkm2', 'FLOW_INcms
                   'DIFFUSEPSTmg', 'REACBEDPSTmg', 'BURYPSTmg', 'BED_PSTmg', 'BACTP_OUTct', 'BACTLP_OUTct', 'CMETAL#1kg',
                   'CMETAL#2kg', 'CMETAL#3kg', 'TOTNkg', 'TOTPkg', 'NO3ConcMg/l', 'WTMPdegc']
 
-
 # User specified options
-watershed_name = 'isan_south' #name of watershed to be used throughout the app (needs to be different from pre-existing watershed names)
-data_path = '/home/ubuntu/swat_data/isan_south/' #path to folder containing all data for new model
-sub_vars = ['PRECIPmm', 'SURQmm', 'GW_Qmm'] #vars from output.sub file to upload to db
-rch_vars = ['FLOW_INcms', 'FLOW_OUTcms'] #vars from output.rch file to upload to db
+data_path = '/home/ubuntu/swat_data/lmrb/' #path to folder containing all data for new model
+watershed_name = 'lmrb' #name of watershed to be used throughout the app (needs to be different from pre-existing watershed names)
+sub_vars = ['PRECIPmm', 'PETmm', 'ETmm', 'SWmm', 'PERCmm', 'SURQmm', 'GW_Qmm', 'WYLDmm', 'SYLDt/ha'] #vars from output.sub file to upload to db
+rch_vars = ['FLOW_INcms', 'FLOW_OUTcms', 'EVAPcms', 'SED_INtons', 'SED_OUTtons', 'SEDCONCmg/kg', 'ORGN_INkg', 'ORGN_OUTkg', 'DISOX_INkg', 'DISOX_OUTkg'] #vars from output.rch file to upload to db
 
-db = {'name': 'swat2_swat_db',
-            'user':'tethys_super',
-            'pass':'pass',
-            'host':'localhost',
-            'port':'5435'}
-def new_watershed(db, watershed_name):
-    conn = psycopg2.connect(
-        'dbname={0} user={1} password={2} host={3} port={4}'
-            .format(db['name'], db['user'], db.['pass'], db['host'], db['port'])
-    )
+
+def upload_swat_outputs(output_path, watershed_name, sub_vars, rch_vars):
+    conn = psycopg2.connect('dbname=swat2_swat_db user=tethys_super password=pass host=localhost port=5435')
     cur = conn.cursor()
     cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
     records = cur.fetchall()
 
     if len(records) > 0:
-        return 1
+        print("watershed name already exists")
     else:
         cur.execute("""INSERT INTO watershed (name) VALUES ('{0}')""".format(watershed_name))
 
         conn.commit()
-        return 0
 
-def upload_swat_outputs(db, output_path, watershed_name, sub_vars, rch_vars):
-    conn = psycopg2.connect(
-        'dbname={0} user={1} password={2} host={3} port={4}'
-            .format(db['name'], db['user'], db.['pass'], db['host'], db['port'])
-    )
-    cur = conn.cursor()
-    cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
-    records = cur.fetchall()
-    print(records)
+        cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
+        records = cur.fetchall()
+        print(records)
     watershed_id = records[0][0]
     print(watershed_id)
 
@@ -86,8 +71,8 @@ def upload_swat_outputs(db, output_path, watershed_name, sub_vars, rch_vars):
                     val = float(columns[sub_column_list.index(item)])
                     cur.execute("""INSERT INTO output_sub (watershed_id, year_month_day, sub_id, var_name, val)
                          VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, sub, var_name, val))
-
                 conn.commit()
+
 
         #upload output.rch data to PostgreSQL database
         if file.endswith('.rch'):
@@ -108,7 +93,6 @@ def upload_swat_outputs(db, output_path, watershed_name, sub_vars, rch_vars):
                         val = float(columns[rchday_column_list.index(item)])
                         cur.execute("""INSERT INTO output_rch_day (watershed_id, year_month_day, reach_id, var_name, val)
                                     VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, reach, var_name, val))
-
                     conn.commit()
 
     sub_vars = ','.join(sub_vars)
@@ -145,42 +129,11 @@ def upload_swat_outputs(db, output_path, watershed_name, sub_vars, rch_vars):
                 VALUES ({0}, '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')""".format(watershed_id, rchday_start, rchday_end, rch_vars, sub_start, sub_end, sub_vars)
                 )
     conn.commit()
-
-    cur.execute("""CREATE INDEX rch_day_index ON output_rch_day (watershed_id, reach_id, var_name)""")
-    cur.execute("""CREATE INDEX sub_index ON output_sub (watershed_id, sub_id, var_name)""")
     conn.close()
 
 
-def upload_stream_connect(db, watershed_path, watershed_name):
-    conn = psycopg2.connect(
-        'dbname={0} user={1} password={2} host={3} port={4}'
-            .format(db['name'], db['user'], db.['pass'], db['host'], db['port'])
-    )
-    cur = conn.cursor()
+upload_swat_outputs(os.path.join(data_path, 'Outputs'), watershed_name, sub_vars, rch_vars)
 
-    cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
-    records = cur.fetchall()
-    watershed_id = records[0][0]
-
-    dbf_path = os.path.join(watershed_path, watershed_name + '-reach.dbf')
-
-    table = DBF(dbf_path, load=True)
-    for record in table:
-        stream_id = int(record['Subbasin'])
-        to_node = int(record['TO_NODE'])
-        print(stream_id)
-
-        cur.execute("""INSERT INTO stream_connect (watershed_id, stream_id, to_node) VALUES ({0}, {1}, {2})""".format(
-            watershed_id, stream_id, to_node))
-
-        conn.commit()
-
-
-if new_watershed(db, watershed_name) == 1:
-    print("This watershed name already exists in the database")
-else:
-    upload_swat_outputs(db, os.path.join(data_path, 'Outputs'), watershed_name, sub_vars, rch_vars)
-    upload_stream_connect(db, os.path.join(data_path, 'Watershed'), watershed_name)
 # if file.endswith('.hru'):
 #     print('hru')
 #     hru_path = os.path.join(output_path, file)
