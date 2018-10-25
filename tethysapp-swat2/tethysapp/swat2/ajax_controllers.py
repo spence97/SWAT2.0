@@ -12,6 +12,7 @@ def get_upstream(request):
     Controller to get list of all upstream reach ids and pass it to front end
     """
     watershed = request.POST.get('watershed')
+    watershed_id = request.POST.get('watershed_id')
     streamID = request.POST.get('streamID')
     unique_id = request.POST.get('id')
     unique_path = os.path.join(temp_workspace, unique_id)
@@ -19,7 +20,7 @@ def get_upstream(request):
         os.makedirs(unique_path)
         os.chmod(unique_path, 0o777)
 
-    upstreams = get_upstreams(watershed, streamID)
+    upstreams = get_upstreams(watershed_id, streamID)
 
     json_dict = JsonResponse({'watershed': watershed, 'streamID': streamID, 'upstreams': upstreams})
     return json_dict
@@ -88,9 +89,10 @@ def coverage_compute(request):
     uniqueID = request.POST.get('userID')
     outletID = str(request.POST.get('outletID'))
     watershed = request.POST.get('watershed')
+    watershed_id = request.POST.get('watershed_id')
     raster_type = request.POST.get('raster_type')
     # clip_raster(watershed, uniqueID, outletID, raster_type)
-    coverage_dict = coverage_stats(watershed, uniqueID, outletID, raster_type)
+    coverage_dict = coverage_stats(watershed, watershed_id, uniqueID, outletID, raster_type)
     json_dict = JsonResponse(coverage_dict)
     return(json_dict)
 

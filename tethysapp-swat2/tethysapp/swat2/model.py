@@ -138,36 +138,6 @@ class SUB(Base):
         self.var_name = var_name
         self.val = val
 
-# class HRU(Base):
-#     '''
-#     Region SQLAlchemy DB Model
-#     '''
-#
-#     __tablename__ = 'output_hru'
-#
-#     # Table Columns
-#
-#     id = Column(Integer, primary_key=True)
-#     watershed_id = Column(Integer, ForeignKey('watershed.id'))
-#     month_day_year = Column(Date)
-#     sub_id = Column(Integer)
-#     hru_id = Column(Integer)
-#     lulc = Column(String)
-#     var_name = Column(String)
-#     val = Column(Float)
-#
-#     def __init__(self, watershed_id, month_day_year, sub_id, hru_id, lulc, var_name, val):
-#         """
-#         Constructor for the table
-#         """
-#         self.watershed_id = watershed_id
-#         self.month_day_year = month_day_year
-#         self.sub_id = sub_id
-#         self.hru_id = hru_id
-#         self.lulc = lulc
-#         self.var_name = var_name
-#         self.val = val
-
 class LULC(Base):
     '''
     LULC SQLAlchemy DB Model
@@ -192,6 +162,7 @@ class LULC(Base):
         """
         self.watershed_id = watershed_id
         self.value = value
+        self.lulc = lulc
         self.lulc_class = lulc_class
         self.lulc_subclass = lulc_subclass
         self.class_color = class_color
@@ -209,17 +180,17 @@ class SOIL(Base):
     id = Column(Integer, primary_key=True)
     watershed_id = Column(Integer, ForeignKey('watershed.id'))
     value = Column(Integer)
-    name = Column(String)
-    color = Column(String)
+    soil_class = Column(String)
+    class_color = Column(String)
 
-    def __init__(self, watershed_id, value, name, color):
+    def __init__(self, watershed_id, value, soil_class, class_color):
         """
         Constructor for the table
         """
         self.watershed_id = watershed_id
         self.value = value
-        self.name = name
-        self.color = color
+        self.soil_class = soil_class
+        self.class_color = class_color
 
 class STREAM_CONNECT(Base):
     '''
@@ -362,15 +333,15 @@ def extract_daily_rch(watershed, watershed_id, start, end, parameters, reachid):
                'Timestep': 'Daily',
                'FileType': 'rch'}
 
-    Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
+    Session = Swat2.get_persistent_store_database(db['name'], as_sessionmaker=True)
     session = Session()
     for x in range(0, len(parameters)):
         param_name = rch_param_names[parameters[x]]
         rchDict['Names'].append(param_name)
 
-        rch_dqr = """SELECT val FROM output_rch_day WHERE watershed_id={0} AND reach_id={1} AND var_name='{2}' AND year_month_day BETWEEN '{3}' AND '{4}'; """.format(
+        rch_qr = """SELECT val FROM output_rch_day WHERE watershed_id={0} AND reach_id={1} AND var_name='{2}' AND year_month_day BETWEEN '{3}' AND '{4}'; """.format(
             watershed_id, reachid, parameters[x], dt_start, dt_end)
-        data = session.execute(text(rch_dqr)).fetchall()
+        data = session.execute(text(rch_qr)).fetchall()
 
         ts = []
         i = 0
@@ -400,15 +371,15 @@ def extract_sub(watershed, watershed_id, start, end, parameters, subid):
                'Timestep': 'Daily',
                'FileType': 'sub'}
 
-    Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
+    Session = Swat2.get_persistent_store_database(db['name'], as_sessionmaker=True)
     session = Session()
     for x in range(0, len(parameters)):
         param_name = sub_param_names[parameters[x]]
         subDict['Names'].append(param_name)
 
-        rch_dqr = """SELECT val FROM output_sub WHERE watershed_id={0} AND sub_id={1} AND var_name='{2}' AND year_month_day BETWEEN '{3}' AND '{4}'; """.format(
+        sub_qr = """SELECT val FROM output_sub WHERE watershed_id={0} AND sub_id={1} AND var_name='{2}' AND year_month_day BETWEEN '{3}' AND '{4}'; """.format(
             watershed_id, subid, parameters[x], dt_start, dt_end)
-        data = session.execute(text(rch_dqr)).fetchall()
+        data = session.execute(text(sub_qr)).fetchall()
 
         ts = []
         i = 0
@@ -423,18 +394,19 @@ def extract_sub(watershed, watershed_id, start, end, parameters, subid):
 
 
 # geospatial processing functions
-def get_upstreams(watershed, streamID):
-    dbf_path = os.path.join(data_path, watershed, 'Watershed', 'Reach.dbf')
+def get_upstreams(watershed_id, streamID):
+    Session = Swat2.get_persistent_store_database(db['name'], as_sessionmaker=True)
+    session = Session()
     upstreams = [int(streamID)]
     temp_upstreams = [int(streamID)]
-    table = DBF(dbf_path, load=True)
 
     while len(temp_upstreams)>0:
         reach = temp_upstreams[0]
-        for record in table:
-            if record['TO_NODE'] == reach:
-                temp_upstreams.append(record['Subbasin'])
-                upstreams.append(record['Subbasin'])
+        upstream_qr = """SELECT stream_id FROM stream_connect WHERE watershed_id={0} AND to_node={1}""".format(watershed_id, reach)
+        records = session.execute(text(upstream_qr)).fetchall()
+        for stream in records:
+            temp_upstreams.append(stream[0])
+            upstreams.append(stream[0])
         temp_upstreams.remove(reach)
     return upstreams
 
@@ -470,72 +442,72 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
     else:
         print('layer already exists')
 
-def coverage_stats(watershed, uniqueID, outletID, raster_type):
-    tif_path = temp_workspace + '/' + str(uniqueID) + '/' + watershed + '_upstream_' + str(raster_type) + '_' + str(outletID) + '.tif'
-    ds = gdal.Open(tif_path) #open user-requested TIFF file using gdal
-    band = ds.GetRasterBand(1) #read the 1st raster band
-    array = np.array(band.ReadAsArray()) #create an array of all values in the raster
-    size = array.size #get the size (pixel count) of the raster
-    unique, counts = np.unique(array, return_counts=True) #find all the unique values in the raster
-    unique_dict = dict(zip(unique, counts))#create a dictionary containing unique values and the number of times each occurs
-
-    #get "No Data" values from the {lulc or soil}_info.txt file
-    color_key_path = os.path.join(data_path, watershed, 'Land', raster_type + '_info.txt')
+def coverage_stats(watershed, watershed_id, unique_id, outletID, raster_type):
+    Session = Swat2.get_persistent_store_database(db['name'], as_sessionmaker=True)
+    session = Session()
+    tif_path = temp_workspace + '/' + str(unique_id) + '/' + watershed + '_upstream_' + str(raster_type) + '_' + str(
+        outletID) + '.tif'
+    ds = gdal.Open(tif_path)  # open user-requested TIFF file using gdal
+    band = ds.GetRasterBand(1)  # read the 1st raster band
+    array = np.array(band.ReadAsArray())  # create an array of all values in the raster
+    size = array.size  # get the size (pixel count) of the raster
+    unique, counts = np.unique(array, return_counts=True)  # find all the unique values in the raster
+    unique_dict = dict(
+        zip(unique, counts))  # create a dictionary containing unique values and the number of times each occurs
+    # get "NoData" values from the {lulc or soil} Postgres table
     nodata_values = []
-    with open(color_key_path) as f:
-        for line in f:
-            splitline = line.split('  ')
-            if splitline[1] == 'NoData':
-                nodata_values.append(splitline[0])
-                
-    #subtract the count of "No Data" pixels in the raster from the total raster size
+    nodata_qr = """SELECT value FROM {0} WHERE watershed_id={1} AND {0}_class='NoData'""".format(raster_type, watershed_id)
+    records = session.execute(text(nodata_qr)).fetchall()
+    for val in records:
+        nodata_values.append(val[0])
+
+    # subtract the count of "No Data" pixels in the raster from the total raster size
     for x in unique_dict:
-        if str(x) in nodata_values:
+        if x in nodata_values:
             nodata_size = unique_dict[x]
             size = size - nodata_size
             unique_dict[x] = 0
-            
-    #compute percent coverage for each unique value
+
+    # compute percent coverage for each unique value
     for x in unique_dict:
         if x not in nodata_values:
             unique_dict[x] = float(unique_dict[x]) / size * 100
-            
-    #create dictionary containing all the coverage information from the raster and info.txt file
+    print(unique_dict)
+
+    # create dictionary containing all the coverage information from the raster and info.txt file
     if raster_type == 'lulc':
-        
-        #lulc is divided into classes and subclasses for easier categorizing and visualization
-        lulc_dict = {'classes': {},'classValues': {}, 'classColors': {}, 'subclassValues': {}, 'subclassColors': {}}
+
+        # lulc is divided into classes and subclasses for easier categorizing and visualization
+        lulc_dict = {'classes': {}, 'classValues': {}, 'classColors': {}, 'subclassValues': {}, 'subclassColors': {}}
 
         for val in unique_dict:
-            with open(color_key_path) as f:
-                for line in f:
-                    splitline = line.split('  ')
-                    splitline = [x.strip() for x in splitline]
-                    if str(val) not in nodata_values and str(val) in splitline[0]:
-                        lulc_dict['subclassColors'][splitline[2]] = splitline[-1]
-                        lulc_dict['subclassValues'][splitline[2]] = unique_dict[val]
-                        lulc_dict['classes'][splitline[2]] = splitline[1]
-                        if splitline[1] not in lulc_dict['classValues'].keys():
-                            lulc_dict['classValues'][splitline[1]] = unique_dict[val]
-                            lulc_dict['classColors'][splitline[1]] = splitline[-2]
-                        else:
-                            #add all the % coverage values within a class together
-                            lulc_dict['classValues'][splitline[1]] += unique_dict[val] 
+            lulc_qr = """SELECT * FROM {0} WHERE watershed_id={1} AND value={2}""".format(raster_type, watershed_id, val)
+            records = session.execute(text(lulc_qr)).fetchall()
+            record = records[0]
+            if str(val) not in nodata_values:
+                lulc_dict['subclassColors'][record[5]] = record[7]
+                lulc_dict['subclassValues'][record[5]] = unique_dict[val]
+                lulc_dict['classes'][record[5]] = record[4]
+                if record[4] not in lulc_dict['classValues'].keys():
+                    lulc_dict['classValues'][record[4]] = unique_dict[val]
+                    lulc_dict['classColors'][record[4]] = record[6]
+                else:
+                    # add all the % coverage values within a class together
+                    lulc_dict['classValues'][record[4]] += unique_dict[val]
+        return (lulc_dict)
 
-        return(lulc_dict)
-    
     if raster_type == 'soil':
-        #soil type is only divided into soil types and does not have subcategories like lulc
+        # soil type is only divided into soil types and does not have subcategories like lulc
         soil_dict = {'classValues': {}, 'classColors': {}}
+
         for val in unique_dict:
-            with open(color_key_path) as f:
-                for line in f:
-                    splitline = line.split('  ')
-                    splitline = [x.strip() for x in splitline]
-                    if str(val) not in nodata_values and str(val) in splitline[0]:
-                        soil_dict['classColors'][splitline[1]] = splitline[2]
-                        soil_dict['classValues'][splitline[1]] = unique_dict[val]
-        return(soil_dict)
+            soil_qr = """SELECT * FROM {0} WHERE watershed_id={1} AND value={2}""".format(raster_type, watershed_id, val)
+            records = session.execute(text(soil_qr)).fetchall()
+            record = records[0]
+            if str(val) not in nodata_values:
+                soil_dict['classColors'][record[3]] = record[4]
+                soil_dict['classValues'][record[3]] = unique_dict[val]
+        return (soil_dict)
 
 
 #nasaaccess function

@@ -17,6 +17,7 @@ var LIBRARY_OBJECT = (function() {
      *************************************************************************/
     var public_interface,
         geoserver_url = 'http://216.218.240.206:8080/geoserver/wms/',
+        gs_workspace = 'swat',
         basin_layer,
         streams_layer,
         lulc_layer,
@@ -153,7 +154,7 @@ var LIBRARY_OBJECT = (function() {
         var view = new ol.View({
             center: [0, 0],
             projection: projection,
-            zoom: 5.5
+            zoom: 1
         });
         wms_source = new ol.source.ImageWMS();
 
@@ -192,7 +193,7 @@ var LIBRARY_OBJECT = (function() {
         var view = new ol.View({
             center: [0, 0],
             projection: projection,
-            zoom: 5.5
+            zoom: 1
         });
 
         wms_source = new ol.source.ImageWMS();
@@ -231,7 +232,7 @@ var LIBRARY_OBJECT = (function() {
         var view = new ol.View({
             center: [0, 0],
             projection: projection,
-            zoom: 5.5
+            zoom: 1
         });
 
         wms_source = new ol.source.ImageWMS();
@@ -309,7 +310,7 @@ var LIBRARY_OBJECT = (function() {
         var view = new ol.View({
             center: [0, 0],
             projection: projection,
-            zoom: 5.5
+            zoom: 1
         });
 
         wms_source = new ol.source.ImageWMS();
@@ -348,7 +349,7 @@ var LIBRARY_OBJECT = (function() {
         var view = new ol.View({
             center: [0, 0],
             projection: projection,
-            zoom: 5.5
+            zoom: 1
         });
 
         wms_source = new ol.source.ImageWMS();
@@ -387,7 +388,7 @@ var LIBRARY_OBJECT = (function() {
         var view = new ol.View({
             center: [0, 0],
             projection: projection,
-            zoom: 5.5
+            zoom: 1
         });
 
         wms_source = new ol.source.ImageWMS();
@@ -441,8 +442,8 @@ var LIBRARY_OBJECT = (function() {
                 reset_all();
 
                 var store = $('#watershed_select option:selected').val().split('|')[1]
-                var reach_store_id = 'swat:' + store + '-reach'
-                var basin_store_id = 'swat:' + store + '-subbasin'
+                var reach_store_id = gs_workspace + ':' + store + '-reach'
+                var basin_store_id = gs_workspace + ':' + store + '-subbasin'
 
 
                 var clickCoord = evt.coordinate;
@@ -461,7 +462,6 @@ var LIBRARY_OBJECT = (function() {
                             if (parseFloat(result["features"].length < 1)) {
                                 $('#error').html('<p class="alert alert-danger" style="text-align: center"><strong>An unknown error occurred while retrieving the data. Please try again</strong></p>');
                                 $('#error').removeClass('hidden');
-                                $('#view-reach-loading').addClass('hidden')
 
                                 setTimeout(function () {
                                     $('#error').addClass('hidden')
@@ -491,7 +491,7 @@ var LIBRARY_OBJECT = (function() {
                             $('#datacart_link').removeClass('active');
                             $("#data-modal").modal('show');
 
-                            get_upstream(reach_store_id, basin_store_id, watershed, streamID, sessionStorage.userId);
+                            get_upstream(reach_store_id, basin_store_id, watershed, watershed_id, streamID, sessionStorage.userId);
 
                         }
                     });
@@ -513,12 +513,13 @@ var LIBRARY_OBJECT = (function() {
         });
     }
 
-    get_upstream = function(reach_store_id, basin_store_id, watershed, streamID, userId) {
+    get_upstream = function(reach_store_id, basin_store_id, watershed, watershed_id, streamID, userId) {
         $.ajax({
             type: "POST",
             url: '/apps/swat2/get_upstream/',
             data: {
                 'watershed': watershed,
+                'watershed_id': watershed_id,
                 'streamID': streamID,
                 'id': userId
             },
@@ -739,7 +740,7 @@ var LIBRARY_OBJECT = (function() {
                     $('#clip_lulc').attr("disabled", true)
                     $('#lulc_comp').attr("disabled", false)
                     var lulc_store = watershed + '_upstream_lulc_' + outletID
-                    var lulc_store_id = 'swat:' + lulc_store
+                    var lulc_store_id = gs_workspace + ':' + lulc_store
 
                     //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
                     var lulc_wms_source = new ol.source.ImageWMS({
@@ -762,7 +763,7 @@ var LIBRARY_OBJECT = (function() {
                     $('#clip_soil').attr("disabled", true);
                     $('#soil_comp').attr("disabled", false)
                     var soil_store = watershed + '_upstream_soil_' + outletID
-                    var soil_store_id = 'swat:' + soil_store
+                    var soil_store_id = gs_workspace + ':' + soil_store
 
                     //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
                     var soil_wms_source = new ol.source.ImageWMS({
@@ -787,8 +788,7 @@ var LIBRARY_OBJECT = (function() {
     add_streams = function() {
 //      add the streams for the selected watershed
         var store = $('#watershed_select option:selected').val().split('|')[1]
-
-        var store_id = 'swat:' + store + '-reach'
+        var store_id = gs_workspace + ':' + store + '-reach'
 
 //      Set the style for the streams layer
         var sld_string = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>'+ store_id + '</Name><UserStyle><FeatureTypeStyle><Rule>\
@@ -825,8 +825,8 @@ var LIBRARY_OBJECT = (function() {
 
     add_basins = function(){
 //      add the basins for the selected watershed
-        var store = $('#watershed_select option:selected').val().split('|')[1]
-        var store_id = 'swat:' + store + '-subbasin'
+        var store = $('#watershed_select option:selected').val().split('|')[1] + '-subbasin'
+        var store_id = gs_workspace + ':' + store
 //      Set the style for the subbasins layer
         var sld_string = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>'+ store_id + '</Name><UserStyle><FeatureTypeStyle><Rule>\
             <PolygonSymbolizer>\
@@ -867,8 +867,8 @@ var LIBRARY_OBJECT = (function() {
 
     add_lulc = function(){
 //      add the streams for the selected watershed
-        var store = 'lmrb_2010_lulc_map1'
-        var store_id = 'swat:' + store
+        var store = $('#watershed_select option:selected').val().split('|')[1] + '-lulc'
+        var store_id = gs_workspace + ':' + store
 
 
 //      Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
@@ -895,8 +895,8 @@ var LIBRARY_OBJECT = (function() {
 
     add_soil = function(){
 //      add the streams for the selected watershed
-        var store = 'lmrb_soil_hwsd1'
-        var store_id = 'swat:' + store
+        var store = $('#watershed_select option:selected').val().split('|')[1] + '-soil'
+        var store_id = gs_workspace + ':' + store
 
 //      Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
         wms_source = new ol.source.ImageWMS({
@@ -988,7 +988,7 @@ var LIBRARY_OBJECT = (function() {
 
     updateView = function() {
         var store = $('#watershed_select option:selected').val().split('|')[1]
-        var store_id = 'swat:' + store + '-reach'
+        var store_id = gs_workspace + ':' + store + '-reach'
         if (store === 'lower_mekong') {
             var view = new ol.View({
                 center: [104.5, 17.5],
@@ -1238,6 +1238,7 @@ var LIBRARY_OBJECT = (function() {
 
     soil_compute = function(){
         var watershed = sessionStorage.watershed
+        var watershed = sessionStorage.watershed_id
         var userID = sessionStorage.userId
         var outletID = sessionStorage.streamID
         var rasterType = 'soil'
@@ -1249,6 +1250,7 @@ var LIBRARY_OBJECT = (function() {
                 'userID': userID,
                 'outletID': outletID,
                 'watershed': watershed,
+                'watershed_id': watershed_id,
                 'raster_type': rasterType
                 },
             success: function(result){
@@ -1300,7 +1302,8 @@ var LIBRARY_OBJECT = (function() {
     };
 
     lulc_compute = function(){
-        var watershed = $('#watershed_select option:selected').val().split('|')[1]
+        var watershed = sessionStorage.watershed
+        var watershed_id = sessionStorage.watershed_id
         var userID = sessionStorage.userId
         var outletID = sessionStorage.streamID
         var rasterType = 'lulc'
@@ -1312,6 +1315,7 @@ var LIBRARY_OBJECT = (function() {
                 'userID': userID,
                 'outletID': outletID,
                 'watershed': watershed,
+                'watershed_id': watershed_id,
                 'raster_type': rasterType
                 },
             success: function(result){
@@ -1578,7 +1582,14 @@ var LIBRARY_OBJECT = (function() {
         })
 
         $('#watershed_select').change(function(){
+            var watershed = $('#watershed_select option:selected').val().split('|')[1]
+            sessionStorage.setItem('watershed', watershed)
+            var watershed_id = $('#watershed_select option:selected').val().split('|')[0]
+            sessionStorage.setItem('watershed_id', watershed_id)
             update_selectors();
+            clearLayers();
+            toggleLayers();
+            updateView();
         })
 
         $(".nav-tabs").click(function(){

@@ -2,6 +2,30 @@ import os
 import re
 import psycopg2
 import datetime
+import requests
+from dbfread import DBF
+
+
+# User specified options
+watershed_name = 'lower_mekong' #name of watershed to be used throughout the app (needs to be different from pre-existing watershed names)
+data_path = '/home/ubuntu/swat_data/lower_mekong/' #path to folder containing all data for new model
+sub_vars = ['PRECIPmm', 'PETmm', 'ETmm','SURQmm', 'GW_Qmm'] #vars from output.sub file to upload to db
+rch_vars = ['FLOW_OUTcms', 'SEDCONCmg/kg', 'NO3_OUTkg', 'ORGP_OUTkg'] #vars from output.rch file to upload to db
+
+#database specs
+db = {'name': 'swat2_swat_db',
+            'user':'tethys_super',
+            'pass':'pass',
+            'host':'localhost',
+            'port':'5435'}
+
+#geoserver specs
+geoserver = {'rest_url':'http://216.218.240.206:8080/geoserver/rest/',
+             'wms_url':'http://216.218.240.206:8080/geoserver/wms/',
+             'wfs_url':'http://216.218.240.206:8080/geoserver/wfs/',
+             'user':'admin',
+             'password':'geoserver',
+             'workspace':'swat'}
 
 # list of variables in SWAT output files used to index columns
 sub_column_list = ['', 'SUB', 'GIS', 'MO', 'DA', 'YR', 'AREAkm2', 'PRECIPmm', 'SNOMELTmm', 'PETmm', 'ETmm', 'SWmm', 'PERCmm',
@@ -22,36 +46,41 @@ rchday_column_list = ['', 'RCH', 'GIS', 'MO', 'DA', 'YR', 'AREAkm2', 'FLOW_INcms
                   'DIFFUSEPSTmg', 'REACBEDPSTmg', 'BURYPSTmg', 'BED_PSTmg', 'BACTP_OUTct', 'BACTLP_OUTct', 'CMETAL#1kg',
                   'CMETAL#2kg', 'CMETAL#3kg', 'TOTNkg', 'TOTPkg', 'NO3ConcMg/l', 'WTMPdegc']
 
-# User specified options
-data_path = '/home/ubuntu/swat_data/lmrb/' #path to folder containing all data for new model
-watershed_name = 'lmrb' #name of watershed to be used throughout the app (needs to be different from pre-existing watershed names)
-sub_vars = ['PRECIPmm', 'PETmm', 'ETmm', 'SWmm', 'PERCmm', 'SURQmm', 'GW_Qmm', 'WYLDmm', 'SYLDt/ha'] #vars from output.sub file to upload to db
-rch_vars = ['FLOW_INcms', 'FLOW_OUTcms', 'EVAPcms', 'SED_INtons', 'SED_OUTtons', 'SEDCONCmg/kg', 'ORGN_INkg', 'ORGN_OUTkg', 'DISOX_INkg', 'DISOX_OUTkg'] #vars from output.rch file to upload to db
-
-
-def upload_swat_outputs(output_path, watershed_name, sub_vars, rch_vars):
-    conn = psycopg2.connect('dbname=swat2_swat_db user=tethys_super password=pass host=localhost port=5435')
+#data upload functions
+def new_watershed(db, watershed_name):
+    print('Creating new watershed in database')
+    conn = psycopg2.connect(
+        'dbname={0} user={1} password={2} host={3} port={4}'
+            .format(db['name'], db['user'], db['pass'], db['host'], db['port'])
+    )
     cur = conn.cursor()
     cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
     records = cur.fetchall()
 
     if len(records) > 0:
-        print("watershed name already exists")
+        print('This watershed name already exists. Please specify a new name that is not already being used in the database')
+        return 1
     else:
         cur.execute("""INSERT INTO watershed (name) VALUES ('{0}')""".format(watershed_name))
 
         conn.commit()
+        return 0
 
-        cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
-        records = cur.fetchall()
-        print(records)
+def upload_swat_outputs(db, output_path, watershed_name, sub_vars, rch_vars):
+    print('SWAT output files')
+    conn = psycopg2.connect(
+        'dbname={0} user={1} password={2} host={3} port={4}'
+            .format(db['name'], db['user'], db['pass'], db['host'], db['port'])
+    )
+    cur = conn.cursor()
+    cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
+    records = cur.fetchall()
     watershed_id = records[0][0]
-    print(watershed_id)
 
     for file in os.listdir(output_path):
         #upload output.sub data to PostgreSQL database
         if file.endswith('.sub'):
-            print('sub')
+            print('uploading output.sub to database')
             sub_path = os.path.join(output_path, file)
             f = open(sub_path)
             for skip_line in f:
@@ -71,11 +100,12 @@ def upload_swat_outputs(output_path, watershed_name, sub_vars, rch_vars):
                     val = float(columns[sub_column_list.index(item)])
                     cur.execute("""INSERT INTO output_sub (watershed_id, year_month_day, sub_id, var_name, val)
                          VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, sub, var_name, val))
-                conn.commit()
 
+                conn.commit()
 
         #upload output.rch data to PostgreSQL database
         if file.endswith('.rch'):
+            print('uploading output_daily.rch to database')
             if 'daily' in file:
                 print('rch')
                 rchday_path = os.path.join(output_path, file)
@@ -93,37 +123,32 @@ def upload_swat_outputs(output_path, watershed_name, sub_vars, rch_vars):
                         val = float(columns[rchday_column_list.index(item)])
                         cur.execute("""INSERT INTO output_rch_day (watershed_id, year_month_day, reach_id, var_name, val)
                                     VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, reach, var_name, val))
+
                     conn.commit()
 
     sub_vars = ','.join(sub_vars)
-    print(sub_vars)
 
     cur.execute(
         """SELECT MIN(year_month_day) FROM output_sub WHERE watershed_id={0}""".format(watershed_id)
     )
     sub_start = cur.fetchall()[0][0]
-    print(sub_start)
 
     cur.execute(
         """SELECT MAX(year_month_day) FROM output_sub WHERE watershed_id={0}""".format(watershed_id)
     )
 
     sub_end = cur.fetchall()[0][0]
-    print(sub_end)
     rch_vars = ','.join(rch_vars)
-    print(rch_vars)
 
     cur.execute(
         """SELECT MIN(year_month_day) FROM output_rch_day WHERE watershed_id={0}""".format(watershed_id)
     )
     rchday_start = cur.fetchall()[0][0]
-    print(rchday_start)
 
     cur.execute(
         """SELECT MAX(year_month_day) FROM output_rch_day WHERE watershed_id={0}""".format(watershed_id)
     )
     rchday_end = cur.fetchall()[0][0]
-    print(rchday_end)
 
     cur.execute("""INSERT INTO watershed_info (watershed_id, rchday_start, rchday_end, rch_vars, sub_start, sub_end, sub_vars)
                 VALUES ({0}, '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')""".format(watershed_id, rchday_start, rchday_end, rch_vars, sub_start, sub_end, sub_vars)
@@ -131,8 +156,143 @@ def upload_swat_outputs(output_path, watershed_name, sub_vars, rch_vars):
     conn.commit()
     conn.close()
 
+def upload_shapefiles(geoserver, watershed_path):
+    print('Watershed Data')
+    for file in os.listdir(watershed_path):
+        if file.endswith('.zip'):
+            path = os.path.join(watershed_path, file)
+            storename = file.split('.')[0]
+            print('uploading ' + storename + ' to geoserver')
+            headers = {'Content-type': 'application/zip', }
+            user = geoserver['user']
+            password = geoserver['password']
+            data = open(path, 'rb').read()
 
-upload_swat_outputs(os.path.join(data_path, 'Outputs'), watershed_name, sub_vars, rch_vars)
+            request_url = '{0}workspaces/{1}/datastores/{2}/file.shp'.format(geoserver['rest_url'],
+                                                                                     geoserver['workspace'],
+                                                                                     storename)
+
+            requests.put(request_url, verify=False, headers=headers, data=data, auth=(user, password))
+
+def upload_stream_connect(db, watershed_path, watershed_name):
+    print('uploading stream connectivity information to database')
+    conn = psycopg2.connect(
+        'dbname={0} user={1} password={2} host={3} port={4}'
+            .format(db['name'], db['user'], db['pass'], db['host'], db['port'])
+    )
+    cur = conn.cursor()
+
+    cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
+    records = cur.fetchall()
+    watershed_id = records[0][0]
+
+    dbf_path = os.path.join(watershed_path, watershed_name + '-reach.dbf')
+
+    table = DBF(dbf_path, load=True)
+    for record in table:
+        stream_id = int(record['Subbasin'])
+        to_node = int(record['TO_NODE'])
+        print(stream_id)
+
+        cur.execute("""INSERT INTO stream_connect (watershed_id, stream_id, to_node) VALUES ({0}, {1}, {2})""".format(
+            watershed_id, stream_id, to_node))
+
+        conn.commit()
+    conn.close()
+
+def upload_tiffiles(geoserver, land_path, watershed_name):
+    print('Land Data')
+    for file in os.listdir(land_path):
+        if file.endswith('.tif') and 'dem' not in file:
+            path = os.path.join(land_path, file)
+            storename = watershed_name + '-' + file.split('.')[0]
+            print('uploading ' + storename + ' to geoserver')
+            headers = {'Content-type': 'image/tiff', }
+            user = geoserver['user']
+            password = geoserver['password']
+            data = open(path, 'rb').read()
+
+            request_url = '{0}workspaces/{1}/coveragestores/{2}/file.geotiff'.format(geoserver['rest_url'],
+                                                                                     geoserver['workspace'], storename)
+
+            requests.put(request_url, verify=False, headers=headers, data=data, auth=(user, password))
+
+def upload_lulc_key(db, land_path, watershed_name):
+    print('uploading lulc_key to database')
+    conn = psycopg2.connect(
+        'dbname={0} user={1} password={2} host={3} port={4}'
+            .format(db['name'], db['user'], db['pass'], db['host'], db['port'])
+    )
+    cur = conn.cursor()
+    cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
+    records = cur.fetchall()
+    watershed_id = records[0][0]
+
+    lulc_key_path = os.path.join(land_path, 'lulc_key.txt')
+    f = open(lulc_key_path)
+    for line in f:
+        if 'Value' not in line:
+            line = line.strip()
+            line=line.strip(' ')
+            columns = line.split(',')
+            value = int(columns[0])
+            lulc = columns[1]
+            lulc_class = columns[2]
+            lulc_subclass = columns[3]
+            class_color = columns[4]
+            subclass_color = columns[5]
+            cur.execute("""INSERT INTO lulc (watershed_id, value, lulc, lulc_class, lulc_subclass, class_color, subclass_color) 
+                        VALUES ({0}, {1}, '{2}', '{3}', '{4}', '{5}', '{6}')"""
+                        .format(watershed_id, value, lulc, lulc_class, lulc_subclass, class_color, subclass_color))
+
+        conn.commit()
+
+def upload_soil_key(db, land_path, watershed_name):
+    print('uploading soil_key to database')
+    conn = psycopg2.connect(
+        'dbname={0} user={1} password={2} host={3} port={4}'
+            .format(db['name'], db['user'], db['pass'], db['host'], db['port'])
+    )
+    cur = conn.cursor()
+    cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
+    records = cur.fetchall()
+    watershed_id = records[0][0]
+
+    soil_key_path = os.path.join(land_path, 'soil_key.txt')
+    f = open(soil_key_path)
+    for line in f:
+        if 'Value' not in line:
+            line = line.strip()
+            line=line.strip(' ')
+            columns = line.split(',')
+            value = int(columns[0])
+            soil_class = columns[1]
+            class_color = columns[2]
+            cur.execute("""INSERT INTO soil (watershed_id, value, soil_class, class_color)
+                        VALUES ({0}, {1}, '{2}', '{3}')"""
+                        .format(watershed_id, value, soil_class, class_color))
+
+        conn.commit()
+
+#Check watershed availability and run data upload functions
+# if new_watershed(db, watershed_name) == 0:
+#     upload_swat_outputs(db, os.path.join(data_path, 'Outputs'), watershed_name, sub_vars, rch_vars)
+#     upload_shapefiles(geoserver, os.path.join(data_path, 'Watershed'))
+#     upload_stream_connect(db, os.path.join(data_path, 'Watershed'), watershed_name)
+#     upload_tiffiles(geoserver, os.path.join(data_path, 'Land'), watershed_name)
+#     upload_lulc_key(db, os.path.join(data_path, 'Land'), watershed_name)
+#     upload_soil_key(db, os.path.join(data_path, 'Land'), watershed_name)
+
+upload_swat_outputs(db, os.path.join(data_path, 'Outputs'), watershed_name, sub_vars, rch_vars)
+upload_shapefiles(geoserver, os.path.join(data_path, 'Watershed'))
+upload_stream_connect(db, os.path.join(data_path, 'Watershed'), watershed_name)
+upload_tiffiles(geoserver, os.path.join(data_path, 'Land'), watershed_name)
+upload_lulc_key(db, os.path.join(data_path, 'Land'), watershed_name)
+upload_soil_key(db, os.path.join(data_path, 'Land'), watershed_name)
+
+
+
+
 
 # if file.endswith('.hru'):
 #     print('hru')
