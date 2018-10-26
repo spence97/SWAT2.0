@@ -723,6 +723,11 @@ var LIBRARY_OBJECT = (function() {
         var watershed = sessionStorage.watershed
         var userId = sessionStorage.userId
         var outletID = sessionStorage.streamID
+        if (raster_type == 'lulc') {
+            $('#lulc-loading').removeClass('hidden')
+        } else if (raster_type == 'soil') {
+            $('#soil-loading').removeClass('hidden')
+        }
         $.ajax({
             type: "POST",
             url: '/apps/swat2/clip_rasters/',
@@ -733,53 +738,62 @@ var LIBRARY_OBJECT = (function() {
                 'raster_type': raster_type
             },
             success: function(data) {
-                lulc_map.removeLayer(upstreamOverlaySubbasin)
-                soil_map.removeLayer(upstreamOverlaySubbasin)
-
                 if (data.raster_type == 'lulc') {
+
+                    lulc_map.removeLayer(upstreamOverlaySubbasin)
                     $('#clip_lulc').attr("disabled", true)
                     $('#lulc_comp').attr("disabled", false)
                     var lulc_store = watershed + '_upstream_lulc_' + outletID
                     var lulc_store_id = gs_workspace + ':' + lulc_store
+                    console.log(lulc_store_id)
+                    var style = watershed + '-' + data.raster_type
+                    console.log(style)
 
                     //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
                     var lulc_wms_source = new ol.source.ImageWMS({
                         url: geoserver_url,
-                        params: {'LAYERS':lulc_store_id, 'STYLES':'lulc'},
+                        params: {'LAYERS':lulc_store_id, 'STYLES':style},
                         serverType: 'geoserver',
                         crossOrigin: 'Anonymous'
                     });
-
+                    console.log(lulc_wms_source)
                     upstream_lulc = new ol.layer.Image({
                         source: lulc_wms_source
                     });
-
+                    $('#lulc-loading').addClass('hidden')
                     lulc_map.addLayer(upstream_lulc);
                     lulc_map.addLayer(upstreamOverlaySubbasin);
                     var newrow = '<tr>><td>lulc</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
                     $('#tBodySpatial').append(newrow);
                 }
                 if (data.raster_type == 'soil') {
+                    soil_map.removeLayer(upstreamOverlaySubbasin)
                     $('#clip_soil').attr("disabled", true);
                     $('#soil_comp').attr("disabled", false)
                     var soil_store = watershed + '_upstream_soil_' + outletID
                     var soil_store_id = gs_workspace + ':' + soil_store
+                    console.log(soil_store_id)
+                    var style = watershed + '-' + data.raster_type
+                    console.log(style)
 
                     //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
                     var soil_wms_source = new ol.source.ImageWMS({
                         url: geoserver_url,
-                        params: {'LAYERS':soil_store_id, 'STYLES':'soil'},
+                        params: {'LAYERS':soil_store_id, 'STYLES':style},
                         serverType: 'geoserver',
                         crossOrigin: 'Anonymous'
                     });
+                    console.log(soil_wms_source)
 
                     upstream_soil = new ol.layer.Image({
                         source: soil_wms_source
                     });
+                    $('#soil-loading').addClass('hidden')
                     soil_map.addLayer(upstream_soil);
                     soil_map.addLayer(upstreamOverlaySubbasin);
                     var newrow = '<tr>><td>soil</td><td>TIFF</td><td>' + sessionStorage.streamID + '</td</tr>'
                     $('#tBodySpatial').append(newrow);
+
                 }
             }
         })
@@ -787,8 +801,10 @@ var LIBRARY_OBJECT = (function() {
 
     add_streams = function() {
 //      add the streams for the selected watershed
-        var store = $('#watershed_select option:selected').val().split('|')[1]
-        var store_id = gs_workspace + ':' + store + '-reach'
+        var store = $('#watershed_select option:selected').val().split('|')[1] + '-reach'
+        console.log(store)
+        var store_id = gs_workspace + ':' + store
+        console.log(store_id)
 
 //      Set the style for the streams layer
         var sld_string = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>'+ store_id + '</Name><UserStyle><FeatureTypeStyle><Rule>\
@@ -869,12 +885,13 @@ var LIBRARY_OBJECT = (function() {
 //      add the streams for the selected watershed
         var store = $('#watershed_select option:selected').val().split('|')[1] + '-lulc'
         var store_id = gs_workspace + ':' + store
+        var style = store
 
 
 //      Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
         wms_source = new ol.source.ImageWMS({
             url: geoserver_url,
-            params: {'LAYERS':store_id,'STYLES':'lulc'},
+            params: {'LAYERS':store_id,'STYLES':style},
             serverType: 'geoserver',
             crossOrigin: 'Anonymous'
         });
@@ -887,7 +904,7 @@ var LIBRARY_OBJECT = (function() {
         map.addLayer(lulc_layer);
 
         var img = $('<img id="legend">');
-        img.attr("src", geoserver_url + '?request=GetLegendGraphic&version=1.1.0&format=image/png&width=10&height=10&layer=swat:lmrb_2010_lulc_map1')
+        img.attr("src", geoserver_url + '?request=GetLegendGraphic&version=1.1.0&format=image/png&width=10&height=10&layer=' + store_id)
         img.appendTo('#legend_container')
 
     }
@@ -897,11 +914,13 @@ var LIBRARY_OBJECT = (function() {
 //      add the streams for the selected watershed
         var store = $('#watershed_select option:selected').val().split('|')[1] + '-soil'
         var store_id = gs_workspace + ':' + store
+        var style = store
+        console.log(style)
 
 //      Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
         wms_source = new ol.source.ImageWMS({
             url: geoserver_url,
-            params: {'LAYERS':store_id,'STYLE':'soil'},
+            params: {'LAYERS':store_id,'STYLE':style},
             serverType: 'geoserver',
             crossOrigin: 'Anonymous'
         });
@@ -914,7 +933,7 @@ var LIBRARY_OBJECT = (function() {
         map.addLayer(soil_layer);
 
         var img = $('<img id="legend">');
-        img.attr("src", geoserver_url + '?request=GetLegendGraphic&version=1.1.0&format=image/png&width=10&height=10&layer=swat:lmrb_soil_hwsd1')
+        img.attr("src", geoserver_url + '?request=GetLegendGraphic&version=1.1.0&format=image/png&width=10&height=10&layer=' + store_id)
         img.appendTo('#legend_container')
     }
 
@@ -989,53 +1008,43 @@ var LIBRARY_OBJECT = (function() {
     updateView = function() {
         var store = $('#watershed_select option:selected').val().split('|')[1]
         var store_id = gs_workspace + ':' + store + '-reach'
-        if (store === 'lower_mekong') {
-            var view = new ol.View({
-                center: [104.5, 17.5],
-                projection: 'EPSG:4326',
-                zoom: 6.5
-            });
-
-            map.setView(view)
-        } else {
-            var layerParams
-            var layer_xml
-            var bbox
-            var srs
-            var wmsCapUrl = geoserver_url + '?service=WMS&version=1.1.1&request=GetCapabilities&'
-//          Get the extent and projection of the selected watershed and set the map view to fit it
-            $.ajax({
-                type: "GET",
-                url: wmsCapUrl,
-                dataType: 'xml',
-                success: function (xml) {
-//                    var layers = xml.getElementsByTagName("Layer");
-                    var parser = new ol.format.WMSCapabilities();
-                    var result = parser.read(xml);
-                    var layers = result['Capability']['Layer']['Layer']
-                    for (var i=0; i<layers.length; i++) {
-                        if(layers[i].Title == store + '-subbasin') {
-                            layer_xml = xml.getElementsByTagName('Layer')[i+1]
-                            layerParams = layers[i]
-                        }
+        var layerParams
+        var layer_xml
+        var bbox
+        var srs
+        var wmsCapUrl = geoserver_url + '?service=WMS&version=1.1.1&request=GetCapabilities&'
+//      Get the extent and projection of the selected watershed and set the map view to fit it
+        $.ajax({
+            type: "GET",
+            url: wmsCapUrl,
+            dataType: 'xml',
+            success: function (xml) {
+//          var layers = xml.getElementsByTagName("Layer");
+                var parser = new ol.format.WMSCapabilities();
+                var result = parser.read(xml);
+                var layers = result['Capability']['Layer']['Layer']
+                for (var i=0; i<layers.length; i++) {
+                    if(layers[i].Title == store + '-subbasin') {
+                        layer_xml = xml.getElementsByTagName('Layer')[i+1]
+                        layerParams = layers[i]
                     }
-
-                    srs = layer_xml.getElementsByTagName('SRS')[0].innerHTML
-                    bbox = layerParams.BoundingBox[0].extent
-                    var new_extent = ol.proj.transformExtent(bbox, srs, 'EPSG:4326');
-                    var center = ol.extent.getCenter(new_extent)
-                    var view = new ol.View({
-                        center: center,
-                        projection: 'EPSG:4326',
-                        extent: new_extent,
-                        zoom: 8
-                    });
-
-                    map.setView(view)
-                    map.getView().fit(new_extent, map.getSize());
                 }
-            });
-        }
+
+                srs = layer_xml.getElementsByTagName('SRS')[0].innerHTML
+                bbox = layerParams.BoundingBox[0].extent
+                var new_extent = ol.proj.transformExtent(bbox, srs, 'EPSG:4326');
+                var center = ol.extent.getCenter(new_extent)
+                var view = new ol.View({
+                    center: center,
+                    projection: 'EPSG:4326',
+                    extent: new_extent,
+                    zoom: 10
+                });
+
+                map.setView(view)
+                map.getView().fit(new_extent, map.getSize());
+            }
+        });
     }
 
     get_time_series = function(watershed_id, watershed, start, end, parameters, streamID, fileType) {
@@ -1238,7 +1247,7 @@ var LIBRARY_OBJECT = (function() {
 
     soil_compute = function(){
         var watershed = sessionStorage.watershed
-        var watershed = sessionStorage.watershed_id
+        var watershed_id = sessionStorage.watershed_id
         var userID = sessionStorage.userId
         var outletID = sessionStorage.streamID
         var rasterType = 'soil'
@@ -1254,7 +1263,7 @@ var LIBRARY_OBJECT = (function() {
                 'raster_type': rasterType
                 },
             success: function(result){
-                $('#soil-pie-loading').addClass('hidden')
+                $('#soil-loading').addClass('hidden')
                 var classValues = result.classValues
                 var classColors = result.classColors
                 var classData = []
@@ -1569,6 +1578,7 @@ var LIBRARY_OBJECT = (function() {
         $('input[name=userID]').val(sessionStorage.userId)
         init_all();
         update_selectors();
+        $("#help-modal").modal('show');
 
         $(".radio").change(function(){
             clearLayers();

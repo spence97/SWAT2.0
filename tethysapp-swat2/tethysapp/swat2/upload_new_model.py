@@ -283,13 +283,8 @@ def upload_soil_key(db, land_path, watershed_name):
 #     upload_lulc_key(db, os.path.join(data_path, 'Land'), watershed_name)
 #     upload_soil_key(db, os.path.join(data_path, 'Land'), watershed_name)
 
-upload_swat_outputs(db, os.path.join(data_path, 'Outputs'), watershed_name, sub_vars, rch_vars)
-upload_shapefiles(geoserver, os.path.join(data_path, 'Watershed'))
-upload_stream_connect(db, os.path.join(data_path, 'Watershed'), watershed_name)
-upload_tiffiles(geoserver, os.path.join(data_path, 'Land'), watershed_name)
-upload_lulc_key(db, os.path.join(data_path, 'Land'), watershed_name)
-upload_soil_key(db, os.path.join(data_path, 'Land'), watershed_name)
 
+upload_shapefiles(geoserver, os.path.join(data_path, 'Watershed'))
 
 
 

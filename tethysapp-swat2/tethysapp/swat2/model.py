@@ -548,17 +548,12 @@ def write_csv(data):
 
     parameters = data['Parameters']
     param_str = '&'.join(parameters)
-    param_str_low = param_str.lower()
-    param_str_low = ''.join(param_str.split('_'))
+    param_str_low = ''.join(param_str.lower().split('_')).replace('/','')
 
     timestep = data['Timestep']
-
     dates = data['Dates']
-
     values = data['Values']
-
     file_type = data['FileType']
-
     unique_id = data['userId']
 
     start = ''
@@ -572,6 +567,8 @@ def write_csv(data):
         end = datetime.strptime(dates[-1], '%b %d, %Y').strftime('%m%d%Y')
 
     file_name = watershed + '_' + file_type + streamID + '_' + param_str_low + '_' + start + 'to' + end
+    print(file_name)
+    file_name.replace('/','')
     file_dict = {'Parameters': param_str,
                  'Start': start,
                  'End': end,

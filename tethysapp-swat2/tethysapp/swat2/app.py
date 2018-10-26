@@ -7,7 +7,7 @@ class Swat2(TethysAppBase):
     Tethys app class for SWAT Data Viewer.
     """
 
-    name = 'SWAT Data Viewer'
+    name = 'Lower Mekong - SWAT'
     index = 'swat2:home'
     icon = 'swat2/images/logo.png'
     package = 'swat2'

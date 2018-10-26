@@ -32,6 +32,21 @@
     margin: auto;
 }
 
+#help-modal .modal-dialog{
+    top: 8%;
+    width: 90%;
+    height: 100%;
+    padding: 0px;
+    margin: auto;
+}
+
+.logo-image img {
+    height: auto;
+    width: auto;
+    max-width: 20%;
+    max-height: 100%;
+}
+
 .panel-body {
     padding: 0px;
 }
