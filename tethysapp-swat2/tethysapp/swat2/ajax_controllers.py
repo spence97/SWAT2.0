@@ -149,43 +149,62 @@ def download_files(request):
 
 def update_selectors(request):
     watershed_id = request.POST.get('watershed_id')
-    selector_dict = {'rch':{}, 'sub':{}}
+    selector_dict = {'rch':{}, 'sub':{}, 'lulc':{}, 'soil':{}, 'stations':{}, 'nasaaccess':{}}
     Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
     session = Session()
 
-    dqrch = """SELECT rchday_start,rchday_end FROM watershed_info WHERE watershed_id={0}""".format(
-        watershed_id)
-    rchdex = session.execute(text(dqrch)).fetchall()
-    rch_start = rchdex[0][0].strftime("%b %d, %Y")
-    selector_dict['rch']['start'] = rch_start
-    rch_end = rchdex[0][1].strftime("%b %d, %Y")
-    selector_dict['rch']['end'] = rch_end
+    infqr = """SELECT sub,rch,lulc,soil,stations,nasaaccess FROM watershed_info WHERE watershed_id={0}""".format(watershed_id)
+    infex = session.execute(text(infqr)).fetchall()
 
-    dqsub = """SELECT sub_start,sub_end FROM watershed_info WHERE watershed_id={0}""".format(
-        watershed_id)
-    subdex = session.execute(text(dqsub)).fetchall()
-    sub_start = subdex[0][0].strftime("%b %d, %Y")
-    selector_dict['sub']['start'] = sub_start
-    sub_end = subdex[0][1].strftime("%b %d, %Y")
-    selector_dict['sub']['end'] = sub_end
+    sub_avail = infex[0][0]
+    rch_avail = infex[0][1]
+    lulc_avail = infex[0][2]
+    soil_avail = infex[0][3]
+    stat_avail = infex[0][4]
+    nasaaccess_avail = infex[0][5]
+    selector_dict['sub']['exists'] = sub_avail
+    selector_dict['rch']['exists'] = rch_avail
+    selector_dict['lulc']['exists'] = lulc_avail
+    selector_dict['soil']['exists'] = soil_avail
+    selector_dict['stations']['exists'] = stat_avail
+    selector_dict['nasaaccess']['exists'] = nasaaccess_avail
 
-    vqsub = """SELECT sub_vars FROM watershed_info WHERE watershed_id={0}""".format(watershed_id)
-    subvex = session.execute(text(vqsub)).fetchall()
-    subvex = subvex[0][0].split(',')
-    sub_options = []
-    for var in subvex:
-        option = (sub_param_names[str(var)], str(var))
-        sub_options.append(option)
-    selector_dict['sub']['vars'] = sub_options
 
-    vqrch = """SELECT rch_vars FROM watershed_info WHERE watershed_id={0}""".format(watershed_id)
-    rchvex = session.execute(text(vqrch)).fetchall()
-    rchvex = rchvex[0][0].split(',')
-    rch_options = []
-    for var in rchvex:
-        option = (rch_param_names[var], var)
-        rch_options.append(option)
-    selector_dict['rch']['vars'] = rch_options
+    if rch_avail == 'Yes':
+        dqrch = """SELECT rch_start,rch_end FROM watershed_info WHERE watershed_id={0}""".format(
+            watershed_id)
+        rchdex = session.execute(text(dqrch)).fetchall()
+        rch_start = rchdex[0][0].strftime("%b %d, %Y")
+        selector_dict['rch']['start'] = rch_start
+        rch_end = rchdex[0][1].strftime("%b %d, %Y")
+        selector_dict['rch']['end'] = rch_end
+
+        vqrch = """SELECT rch_vars FROM watershed_info WHERE watershed_id={0}""".format(watershed_id)
+        rchvex = session.execute(text(vqrch)).fetchall()
+        rchvex = rchvex[0][0].split(',')
+        rch_options = []
+        for var in rchvex:
+            option = (rch_param_names[var], var)
+            rch_options.append(option)
+        selector_dict['rch']['vars'] = rch_options
+
+    if sub_avail == 'Yes':
+        dqsub = """SELECT sub_start,sub_end FROM watershed_info WHERE watershed_id={0}""".format(
+            watershed_id)
+        subdex = session.execute(text(dqsub)).fetchall()
+        sub_start = subdex[0][0].strftime("%b %d, %Y")
+        selector_dict['sub']['start'] = sub_start
+        sub_end = subdex[0][1].strftime("%b %d, %Y")
+        selector_dict['sub']['end'] = sub_end
+
+        vqsub = """SELECT sub_vars FROM watershed_info WHERE watershed_id={0}""".format(watershed_id)
+        subvex = session.execute(text(vqsub)).fetchall()
+        subvex = subvex[0][0].split(',')
+        sub_options = []
+        for var in subvex:
+            option = (sub_param_names[str(var)], str(var))
+            sub_options.append(option)
+        selector_dict['sub']['vars'] = sub_options
 
     session.close()
     json_dict = JsonResponse(selector_dict)

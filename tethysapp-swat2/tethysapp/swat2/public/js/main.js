@@ -20,6 +20,7 @@ var LIBRARY_OBJECT = (function() {
         gs_workspace = 'swat',
         basin_layer,
         streams_layer,
+        stations_layer,
         lulc_layer,
         soil_layer,
         featureOverlayStream,
@@ -65,6 +66,7 @@ var LIBRARY_OBJECT = (function() {
         clip_rasters,
         add_streams,
         add_basins,
+        add_stations,
         add_lulc,
         add_soil,
         clearLayers,
@@ -476,11 +478,15 @@ var LIBRARY_OBJECT = (function() {
                             $('#rch_tab').addClass('active');
                             $('#sub_tab').removeClass('active');
                             $('#lulc_tab').removeClass('active');
-                            $('#clip_lulc').removeAttr('disabled')
-                            $('#lulc_comp').attr('disabled', true)
+                            if (sessionStorage.lulc_avail === 'Yes') {
+                                $('#clip_lulc').attr('disabled', false)
+                                $('#lulc_compute').attr('disabled', true)
+                            }
                             $('#soil_tab').removeClass('active');
-                            $('#clip_soil').removeAttr('disabled')
-                            $('#soil_comp').attr('disabled', true)
+                            if (sessionStorage.soil_avail === 'Yes') {
+                                $('#clip_soil').attr('disabled', false)
+                                $('#soil_compute').attr('disabled', true)
+                            }
                             $('#nasaaccess_tab').removeClass('active');
                             $('#datacart_tab').removeClass('active');
                             $('#rch_link').addClass('active');
@@ -490,6 +496,7 @@ var LIBRARY_OBJECT = (function() {
                             $('#nasaaccess_link').removeClass('active');
                             $('#datacart_link').removeClass('active');
                             $("#data-modal").modal('show');
+                            $("#data-modal-btn").removeClass('hidden');
 
                             get_upstream(reach_store_id, basin_store_id, watershed, watershed_id, streamID, sessionStorage.userId);
 
@@ -739,15 +746,12 @@ var LIBRARY_OBJECT = (function() {
             },
             success: function(data) {
                 if (data.raster_type == 'lulc') {
-
                     lulc_map.removeLayer(upstreamOverlaySubbasin)
                     $('#clip_lulc').attr("disabled", true)
-                    $('#lulc_comp').attr("disabled", false)
+                    $('#lulc_compute').attr("disabled", false)
                     var lulc_store = watershed + '_upstream_lulc_' + outletID
                     var lulc_store_id = gs_workspace + ':' + lulc_store
-                    console.log(lulc_store_id)
                     var style = watershed + '-' + data.raster_type
-                    console.log(style)
 
                     //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
                     var lulc_wms_source = new ol.source.ImageWMS({
@@ -756,7 +760,6 @@ var LIBRARY_OBJECT = (function() {
                         serverType: 'geoserver',
                         crossOrigin: 'Anonymous'
                     });
-                    console.log(lulc_wms_source)
                     upstream_lulc = new ol.layer.Image({
                         source: lulc_wms_source
                     });
@@ -768,13 +771,11 @@ var LIBRARY_OBJECT = (function() {
                 }
                 if (data.raster_type == 'soil') {
                     soil_map.removeLayer(upstreamOverlaySubbasin)
-                    $('#clip_soil').attr("disabled", true);
-                    $('#soil_comp').attr("disabled", false)
+                    $('#clip_soil').attr("disabled", true)
+                    $('#soil_compute').attr("disabled", false)
                     var soil_store = watershed + '_upstream_soil_' + outletID
                     var soil_store_id = gs_workspace + ':' + soil_store
-                    console.log(soil_store_id)
                     var style = watershed + '-' + data.raster_type
-                    console.log(style)
 
                     //     Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
                     var soil_wms_source = new ol.source.ImageWMS({
@@ -783,7 +784,6 @@ var LIBRARY_OBJECT = (function() {
                         serverType: 'geoserver',
                         crossOrigin: 'Anonymous'
                     });
-                    console.log(soil_wms_source)
 
                     upstream_soil = new ol.layer.Image({
                         source: soil_wms_source
@@ -802,9 +802,7 @@ var LIBRARY_OBJECT = (function() {
     add_streams = function() {
 //      add the streams for the selected watershed
         var store = $('#watershed_select option:selected').val().split('|')[1] + '-reach'
-        console.log(store)
         var store_id = gs_workspace + ':' + store
-        console.log(store_id)
 
 //      Set the style for the streams layer
         var sld_string = '<StyledLayerDescriptor version="1.0.0"><NamedLayer><Name>'+ store_id + '</Name><UserStyle><FeatureTypeStyle><Rule>\
@@ -881,14 +879,36 @@ var LIBRARY_OBJECT = (function() {
 
     }
 
-    add_lulc = function(){
+    add_stations = function() {
 //      add the streams for the selected watershed
+        var store = $('#watershed_select option:selected').val().split('|')[1] + '-stations'
+        var store_id = gs_workspace + ':' + store
+
+//      Set the wms source to the url, workspace, and store for the streams of the selected watershed
+        wms_source = new ol.source.ImageWMS({
+            url: geoserver_url,
+            params: {'LAYERS':store_id,'STYLES':'point'},
+            serverType: 'geoserver',
+            crossOrigin: 'Anonymous'
+        });
+
+        stations_layer = new ol.layer.Image({
+            source: wms_source
+        });
+
+//      add streams to the map
+        map.addLayer(stations_layer);
+
+    };
+
+    add_lulc = function(){
+//      add the lulc layer for the selected watershed
         var store = $('#watershed_select option:selected').val().split('|')[1] + '-lulc'
         var store_id = gs_workspace + ':' + store
         var style = store
 
 
-//      Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
+//      Set the wms source to the url, workspace, and store for the lulc layer of the selected watershed
         wms_source = new ol.source.ImageWMS({
             url: geoserver_url,
             params: {'LAYERS':store_id,'STYLES':style},
@@ -900,7 +920,7 @@ var LIBRARY_OBJECT = (function() {
             source: wms_source
         });
 
-//      add subbasins to the map
+//      add lulc layer to the map
         map.addLayer(lulc_layer);
 
         var img = $('<img id="legend">');
@@ -911,13 +931,12 @@ var LIBRARY_OBJECT = (function() {
 
 
     add_soil = function(){
-//      add the streams for the selected watershed
+//      add the soil layer for the selected watershed
         var store = $('#watershed_select option:selected').val().split('|')[1] + '-soil'
         var store_id = gs_workspace + ':' + store
         var style = store
-        console.log(style)
 
-//      Set the wms source to the url, workspace, and store for the subbasins of the selected watershed
+//      Set the wms source to the url, workspace, and store for the soil layer of the selected watershed
         wms_source = new ol.source.ImageWMS({
             url: geoserver_url,
             params: {'LAYERS':store_id,'STYLE':style},
@@ -929,7 +948,7 @@ var LIBRARY_OBJECT = (function() {
             source: wms_source
         });
 
-//      add subbasins to the map
+//      add soil layer to the map
         map.addLayer(soil_layer);
 
         var img = $('<img id="legend">');
@@ -943,37 +962,68 @@ var LIBRARY_OBJECT = (function() {
         map.removeLayer(lulc_layer);
         map.removeLayer(basin_layer);
         map.removeLayer(streams_layer);
+        map.removeLayer(stations_layer);
     }
 
 
     toggleLayers = function() {
-        if (($('#lulcOption').is(':checked')) && (!$(".toggle").hasClass( "off" ))) {
+        if (($('#lulcOption').is(':checked')) && (!$(".basinToggle .toggle").hasClass( "off" )) && (!$(".stationToggle .toggle").hasClass("off"))) {
             $('#legend_container > img').remove();
             add_lulc();
             add_basins();
             add_streams();
-        } else if (($('#soilOption').is(':checked')) && (!$(".toggle").hasClass( "off" ))) {
+            add_stations();
+        } else if (($('#soilOption').is(':checked')) && (!$(".basinToggle .toggle").hasClass( "off" )) && (!$(".stationToggle .toggle").hasClass("off"))) {
             $('#legend_container > img').remove();
             add_soil();
             add_basins();
             add_streams();
-        } else if (($('#noneOption').is(':checked')) && (!$(".toggle").hasClass( "off" ))) {
+            add_stations();
+        } else if (($('#noneOption').is(':checked')) && (!$(".basinToggle .toggle").hasClass( "off" )) && (!$(".stationToggle .toggle").hasClass("off"))) {
             $('#legend_container > img').remove();
             add_basins();
             add_streams();
-        } else if (($('#lulcOption').is(':checked')) && ($(".toggle").hasClass( "off" ))) {
+            add_stations();
+        } else if (($('#lulcOption').is(':checked')) && (!$(".basinToggle .toggle").hasClass( "off" )) && ($(".stationToggle .toggle").hasClass("off"))) {
+            $('#legend_container > img').remove();
+            add_lulc();
+            add_basins();
+            add_streams();
+        } else if (($('#soilOption').is(':checked')) && (!$(".basinToggle .toggle").hasClass( "off" )) && ($(".stationToggle .toggle").hasClass("off"))) {
+            $('#legend_container > img').remove();
+            add_soil();
+            add_basins();
+            add_streams();
+        } else if (($('#noneOption').is(':checked')) && (!$(".basinToggle .toggle").hasClass( "off" )) && ($(".stationToggle .toggle").hasClass("off"))) {
+            $('#legend_container > img').remove();
+            add_basins();
+            add_streams();
+        } else if (($('#lulcOption').is(':checked')) && ($(".basinToggle .toggle").hasClass( "off" )) && (!$(".stationToggle .toggle").hasClass("off"))) {
             $('#legend_container > img').remove();
             add_lulc();
             add_streams();
-        } else if (($('#soilOption').is(':checked')) && ($(".toggle").hasClass( "off" ))) {
+            add_stations();
+        } else if (($('#soilOption').is(':checked')) && ($(".basinToggle .toggle").hasClass( "off" )) && (!$(".stationToggle .toggle").hasClass("off"))) {
             $('#legend_container > img').remove();
             add_soil();
             add_streams();
-        } else if (($('#noneOption').is(':checked')) && ($(".toggle").hasClass( "off" ))) {
+            add_stations();
+        } else if (($('#noneOption').is(':checked')) && ($(".basinToggle .toggle").hasClass( "off" )) && (!$(".stationToggle .toggle").hasClass("off"))) {
+            $('#legend_container > img').remove();
+            add_streams();
+            add_stations();
+        } else if (($('#lulcOption').is(':checked')) && ($(".basinToggle .toggle").hasClass( "off" )) && ($(".stationToggle .toggle").hasClass("off"))) {
+            $('#legend_container > img').remove();
+            add_lulc();
+            add_streams();
+        } else if (($('#soilOption').is(':checked')) && ($(".basinToggle .toggle").hasClass( "off" )) && ($(".stationToggle .toggle").hasClass("off"))) {
+            $('#legend_container > img').remove();
+            add_soil();
+            add_streams();
+        } else if (($('#noneOption').is(':checked')) && ($(".basinToggle .toggle").hasClass( "off" )) && ($(".stationToggle .toggle").hasClass("off"))) {
             $('#legend_container > img').remove();
             add_streams();
         }
-
     }
 
 
@@ -987,12 +1037,12 @@ var LIBRARY_OBJECT = (function() {
             sub_map.updateSize();
             sub_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), sub_map.getSize());
         } else if ($("#lulc_link").hasClass('active')) {
-            $('#lulc_clip').removeClass('hidden')
+            $('#clip_lulc').removeClass('hidden')
             $('#lulc_compute').removeClass('hidden')
             lulc_map.updateSize();
             lulc_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), lulc_map.getSize());
         } else if ($('#soil_link').hasClass('active')) {
-            $('#soil_clip').removeClass('hidden')
+            $('#clip_soil').removeClass('hidden')
             $('#soil_compute').removeClass('hidden')
             soil_map.updateSize();
             soil_map.getView().fit(sessionStorage.basinExtent.split(',').map(Number), soil_map.getSize());
@@ -1056,8 +1106,6 @@ var LIBRARY_OBJECT = (function() {
 //        } else {
 //            monthOrDay = 'Monthly'
 //        }
-        console.log(monthOrDay)
-        console.log(watershed_id)
 //      AJAX call to the timeseries python controller to run the rch data parser function
         $.ajax({
             type: 'POST',
@@ -1084,7 +1132,6 @@ var LIBRARY_OBJECT = (function() {
             success: function (data) {
 //              Take the resulting json object from the python function and plot it using the Highcharts API
                 data.userId = sessionStorage.userId
-                console.log(data)
                 var data_str = JSON.stringify(data)
                 sessionStorage.setItem('timeseries', data_str)
                 var values = data.Values
@@ -1221,7 +1268,6 @@ var LIBRARY_OBJECT = (function() {
             url: "/apps/swat2/save_file/",
             data: sessionStorage.timeseries,
             success: function(result){
-                console.log(result)
                 var fileType = result.FileType
                 var newrow = '<tr><td>' + result.FileType + '</td><td>' + result.Parameters + '</td><td>' +
                                 result.TimeStep + '</td><td>' + result.Start + '</td><td>' +
@@ -1414,51 +1460,125 @@ var LIBRARY_OBJECT = (function() {
                 'userID': userId,
                 },
             success: function(result){
-                var rch_start = result.rch.start
-                var rch_end = result.rch.end
-                var rch_vars = result.rch.vars
-                var sub_start = result.sub.start
-                var sub_end = result.sub.end
-                var sub_vars = result.sub.vars
-                console.log(rch_start, rch_end, rch_vars, sub_start, sub_end, sub_vars)
-
-                var rch_date_options = {
-                    format: 'MM d, yyyy',
-                    startDate: rch_start,
-                    endDate: rch_end,
-                    startView: 'decade',
-                    minViewMode: 'days',
-                    orientation: 'bottom auto'
-                }
-                var sub_date_options =  {
-                    format: 'MM d, yyyy',
-                    startDate: sub_start,
-                    endDate: sub_end,
-                    startView: 'decade',
-                    minViewMode: 'days',
-                    orientation: 'bottom auto'
-                }
+                var rch = result.rch.exists
+                sessionStorage.setItem('rch_avail', rch)
+                var sub = result.sub.exists
+                sessionStorage.setItem('sub_avail', sub)
+                var stations = result.stations.exists
+                sessionStorage.setItem('stations_avail', stations)
+                var lulc = result.lulc.exists
+                sessionStorage.setItem('lulc_avail', lulc)
+                var soil = result.soil.exists
+                sessionStorage.setItem('soil_avail', soil)
+                var nasaaccess = result.nasaaccess.exists
+                sessionStorage.setItem('nasaaccess_avail', nasaaccess)
 
                 $('.input-daterange input').each(function() {
                     $(this).datepicker('setDate', null)
                     $(this).datepicker('destroy');
                 });
 
-                $('.rch_date').datepicker(rch_date_options);
+                if (rch === 'Yes') {
+                    $('#rch-not-avail').addClass('hidden')
+                    $('#rch_query').removeClass('hidden')
+                    $('#rch_compute').attr('disabled', false)
+                    var rch_start = result.rch.start
+                    var rch_end = result.rch.end
+                    var rch_vars = result.rch.vars
+                    var rch_date_options = {
+                        format: 'MM d, yyyy',
+                        startDate: rch_start,
+                        endDate: rch_end,
+                        startView: 'decade',
+                        minViewMode: 'days',
+                        orientation: 'bottom auto'
+                    }
+                    $('.rch_date').datepicker(rch_date_options);
 
-                $('.sub_date').datepicker(sub_date_options);
+                    $(".rch_var").html('');
+                    rch_vars.forEach(function(schema,i){
+                        var new_option = new Option(schema[0],schema[1]);
+                        $(".rch_var").append(new_option);
+                    });
+                } else {
+                    $('#rch-not-avail').removeClass('hidden')
+                    $('#rch_query').addClass('hidden')
+                    $('#rch_compute').attr('disabled', true)
+                }
+
+                if (sub === 'Yes') {
+                    $('#sub-not-avail').addClass('hidden')
+                    $('#sub_query').removeClass('hidden')
+                    $('#sub_compute').attr('disabled', false)
+                    var sub_start = result.sub.start
+                    var sub_end = result.sub.end
+                    var sub_vars = result.sub.vars
+                    var sub_date_options =  {
+                        format: 'MM d, yyyy',
+                        startDate: sub_start,
+                        endDate: sub_end,
+                        startView: 'decade',
+                        minViewMode: 'days',
+                        orientation: 'bottom auto'
+                    }
+                    $('.sub_date').datepicker(sub_date_options);
+
+                    $(".sub_var").html('');
+                    sub_vars.forEach(function(schema,i){
+                        var new_option = new Option(schema[0],schema[1]);
+                        $(".sub_var").append(new_option);
+                    });
+                } else {
+                    $('#sub-not-avail').removeClass('hidden')
+                    $('#sub_query').addClass('hidden')
+                    $('#sub_compute').attr('disabled', true)
+                }
+
                 $('.start_date').attr("placeholder", "Start Date")
                 $('.end_date').attr("placeholder", "End Date")
-                $(".sub_var").html('');
-                $(".rch_var").html('');
-                sub_vars.forEach(function(schema,i){
-                    var new_option = new Option(schema[0],schema[1]);
-                    $(".sub_var").append(new_option);
-                });
-                rch_vars.forEach(function(schema,i){
-                    var new_option = new Option(schema[0],schema[1]);
-                    $(".rch_var").append(new_option);
-                });
+
+                if (stations === 'Yes') {
+                    $('.stationToggle').removeClass('hidden')
+                } else {
+                    $('.stationToggle').addClass('hidden')
+                }
+
+                if (lulc === 'Yes') {
+                    $('#lulcOption').attr('disabled', false)
+                    $('#lulcToggle').attr('disabled', false)
+                    $('#lulc-not-avail').addClass('hidden')
+                    $('#clip_lulc').attr('disabled', false)
+                    $('#lulc_compute').attr('disabled', true)
+                    $('#lulcOption').attr('disabled', false)
+                } else {
+                    $('#lulcOption').attr('disabled', true)
+                    $('#lulcToggle').attr('disabled', true)
+                    $('#lulc-not-avail').removeClass('hidden')
+                    $('#clip_lulc').attr('disabled', true)
+                    $('#lulc_compute').attr('disabled', true)
+                }
+
+                if (soil === 'Yes') {
+                    $('#soilOption').attr('disabled', false)
+                    $('#soilToggle').attr('disabled', false)
+                    $('#soil-not-avail').addClass('hidden')
+                    $('#clip_soil').attr('disabled', false)
+                    $('#soil_compute').attr('disabled', true)
+                } else {
+                    $('#soilOption').attr('disabled', true)
+                    $('#soilToggle').attr('disabled', true)
+                    $('#soil-not-avail').removeClass('hidden')
+                    $('#clip_soil').attr('disabled', true)
+                    $('#soil_compute').attr('disabled', true)
+                }
+
+                if (nasaaccess === 'Yes') {
+                    $('#na-not-avail').addClass('hidden')
+                    $('#nasaaccess').attr('disabled', false)
+                } else {
+                    $('#na-not-avail').removeClass('hidden')
+                    $('#nasaaccess').attr('disabled', true)
+                }
             }
         })
     }
@@ -1471,7 +1591,6 @@ var LIBRARY_OBJECT = (function() {
         $('.chk:checked').each(function() {
              functions.push( $( this ).val());
         });
-        console.log(watershed, start, end, functions)
         if (watershed === undefined || start === 'Start Date' || end === 'End Date' || functions.length == 0) {
             alert('Please be sure you have selected start and end dates and at least 1 function')
         } else {
@@ -1492,7 +1611,6 @@ var LIBRARY_OBJECT = (function() {
         var email = $('#id_email').val();
         var streamId = sessionStorage.streamID
 
-	    console.log(start, end, functions, watershed, email)
         $.ajax({
             type: 'POST',
             url: "/apps/swat2/run_nasaaccess/",
@@ -1527,10 +1645,14 @@ var LIBRARY_OBJECT = (function() {
         $('#sub_chart_container').addClass('hidden');
         $('#lulcPieContainer').addClass('hidden');
         $('#soilPieContainer').addClass('hidden');
-        $('#clip_lulc').attr('disabled', false)
-        $('#clip_soil').attr('disabled', false)
-        $('#lulc_comp').attr('disabled', true)
-        $('#soil_comp').attr('disabled', true)
+        if (sessionStorage.lulc_avail === 'Yes') {
+            $('#clip_lulc').attr('disabled', false)
+            $('#lulc_compute').attr('disabled', true)
+        }
+        if (sessionStorage.soil_avail === 'Yes') {
+            $('#clip_soil').attr('disabled', false)
+            $('#soil_compute').attr('disabled', true)
+        }
         rch_map.removeLayer(featureOverlayStream)
         rch_map.removeLayer(upstreamOverlayStream)
         sub_map.removeLayer(featureOverlaySubbasin)
@@ -1551,8 +1673,6 @@ var LIBRARY_OBJECT = (function() {
         init_soil_map();
         init_nasaaccess_map();
         init_events();
-        add_basins();
-        add_streams();
     };
 
     /************************************************************************
@@ -1578,7 +1698,8 @@ var LIBRARY_OBJECT = (function() {
         $('input[name=userID]').val(sessionStorage.userId)
         init_all();
         update_selectors();
-        $("#help-modal").modal('show');
+        toggleLayers();
+//        $("#help-modal").modal('show');
 
         $(".radio").change(function(){
             clearLayers();
@@ -1589,6 +1710,11 @@ var LIBRARY_OBJECT = (function() {
             clearLayers();
             toggleLayers();
 
+        })
+
+        $(".stationToggle").change(function(){
+            clearLayers();
+            toggleLayers();
         })
 
         $('#watershed_select').change(function(){
@@ -1605,9 +1731,9 @@ var LIBRARY_OBJECT = (function() {
         $(".nav-tabs").click(function(){
             $('#rch_compute').addClass('hidden')
             $('#sub_compute').addClass('hidden')
-            $('#lulc_clip').addClass('hidden')
+            $('#clip_lulc').addClass('hidden')
             $('#lulc_compute').addClass('hidden')
-            $('#soil_clip').addClass('hidden')
+            $('#clip_soil').addClass('hidden')
             $('#soil_compute').addClass('hidden')
             $('#saveData').addClass('hidden')
             $('#downloadData').addClass('hidden')
@@ -1650,13 +1776,13 @@ var LIBRARY_OBJECT = (function() {
             clip_rasters('soil')
         })
 
-        $("#lulc_comp").click(function(){
+        $("#lulc_compute").click(function(){
             var raster_type = 'lulc'
             lulc_compute(raster_type);
             $('#lulc-pie-loading').removeClass('hidden')
         })
 
-        $("#soil_comp").click(function(){
+        $("#soil_compute").click(function(){
             var raster_type = 'soil'
             soil_compute(raster_type);
             $('#soil-pie-loading').removeClass('hidden')

@@ -21,8 +21,8 @@
 {% endblock %}
 
 {% block header_buttons %}
-  <div class="header-button glyphicon-button" data-toggle="tooltip" data-placement="bottom" title="Panel">
-    <a data-toggle="modal" data-target="#data-modal"><span class="glyphicon glyphicon-file"></span></a>
+  <div id="data-modal-btn" class="header-button glyphicon-button hidden" data-toggle="tooltip" data-placement="bottom" title="Reopen Data Viewer">
+    <a data-toggle="modal" data-target="#data-modal"><span class="glyphicon glyphicon-stats"></span></a>
   </div>
   <div class="header-button glyphicon-button" data-toggle="tooltip" data-placement="bottom" title="Help">
     <a data-toggle="modal" data-target="#help-modal"><span class="glyphicon glyphicon-question-sign"></span></a>
@@ -31,25 +31,31 @@
 
 {% block app_navigation_items %}
     <br>
-    <h5>Select Watershed</h5>
+    <h4><strong>Select Watershed</strong></h4>
       {% gizmo watershed_select %}
     <br>
-    <h5>Toggle Layers</h5>
+    <h4><strong>Toggle Layers</strong></h4>
     <div class="basinToggle">
       <h6>Basins</h6>
         <label>
-            <input id="basin_toggle_switch" type="checkbox" checked data-toggle="toggle" data-on="On" data-off="Off" data-onstyle="success" data-offstyle="danger">
+            <input id="basin_toggle" type="checkbox" checked data-toggle="toggle" data-on="On" data-off="Off" data-onstyle="success" data-offstyle="danger">
+        </label>
+    </div>
+    <div class="stationToggle">
+      <h6>Stations</h6>
+        <label>
+            <input id="station_toggle" type="checkbox" checked data-toggle="toggle" data-on="On" data-off="Off" data-onstyle="success" data-offstyle="danger">
         </label>
     </div>
     <h6>Supplementary Layers</h6>
     <div class="btn-group btn-group-toggle" data-toggle="buttons">
-        <label class="btn btn-primary">
+        <label id="lulcToggle" class="btn btn-primary">
           <input type="radio" class="radio" name="options" id="lulcOption" autocomplete="off"> Land Use/Land Cover
         </label>
-        <label class="btn btn-primary">
+        <label id="soilToggle" class="btn btn-primary">
           <input type="radio" class="radio" name="options" id="soilOption" autocomplete="off"> Soil
         </label>
-        <label class="btn btn-primary active">
+        <label id="noneToggle" class="btn btn-primary active">
           <input type="radio" class="radio" name="options" id="noneOption" autocomplete="off" checked> None
         </label>
     </div>
@@ -73,7 +79,7 @@
         <div id="tabs" class="modal-body">
           <!-- Nav tabs -->
           <ul class="nav nav-tabs" role="tablist">
-              <li role="presentation" id="rch_link" class = "active"><a id="rch_tab_link" href="#rch_tab" aria-controls="rch_tab" role="tab" data-toggle="tab">RCH Model Outputs</a></li>
+              <li role="presentation" id="rch_link" class ="active" aria-disabled><a id="rch_tab_link" href="#rch_tab" aria-controls="rch_tab" role="tab" data-toggle="tab">RCH Model Outputs</a></li>
               <li role="presentation" id="sub_link"><a id="sub_tab_link" href="#sub_tab" aria-controls="sub_tab" role="tab" data-toggle="tab">Sub Model Outputs</a></li>
               <li role="presentation" id="lulc_link"><a id="lulc_tab_link" href="#lulc_tab" aria-controls="lulc_tab" role="tab" data-toggle="tab">LULC Data</a></li>
               <li role="presentation" id="soil_link"><a id="soil_tab_link" href="#soil_tab" aria-controls="soil_tab" role="tab" data-toggle="tab">Soil Data</a></li>
@@ -90,10 +96,13 @@
                 </div>
                 <h6 id="error" class="hidden"></h6>
                 <div class="left">
+                    <div class="alert alert-warning hidden" id="rch-not-avail">
+                        <strong>RCH data is not available for the selected watershed</strong>
+                    </div>
                     <div class="alert alert-success hidden" id="rch_save_success">
                         <strong>Success!</strong> This data has been saved to your cart.
                     </div>
-                    <div class="queryItems">
+                    <div id="rch_query" class="queryItems">
                         <div id="rch_var_picker" class="var_picker">
                             {% gizmo rch_var_select %}
                         </div>
@@ -121,10 +130,13 @@
                 </div>
                 <h6 id="error" class="hidden"></h6>
                 <div class="left">
+                    <div class="alert alert-warning hidden" id="sub-not-avail">
+                        <strong>SUB data is not available for the selected watershed</strong>
+                    </div>
                     <div class="alert alert-success hidden" id="sub_save_success">
                         <strong>Success!</strong> This data has been saved to your cart.
                     </div>
-                    <div class="queryItems">
+                    <div id="sub_query" class="queryItems">
                         <div id="sub_var_picker" class="var_picker">
                             {% gizmo sub_var_select %}
                         </div>
@@ -147,8 +159,11 @@
             </div>
             <div role="tabpanel" class="tab-pane" id="lulc_tab">
               <div class="panel-body">
-                <div class="alert alert-info" id="not-avail"> <strong>Currently under development</strong></div>
+                <div class="alert alert-info" id="under-dev"> <strong>Currently under development</strong></div>
                 <div id="lulc_data_container" class="lulc_data_container">
+                  <div class="alert alert-warning hidden" id="lulc-not-avail">
+                    <strong>LULC data is not available for the selected watershed</strong>
+                  </div>
                   <div class="flex-container-row"><img id="lulc-loading" class="view-file hidden" src="/static/swat2/images/loader.gif" style="margin: auto"/></div>
                   <h6 id="error" class="hidden"></h6>
                   <div id="lulcPieContainer" class="view_chart hidden"></div>
@@ -160,8 +175,11 @@
             </div>
             <div role="tabpanel" class="tab-pane" id="soil_tab">
               <div class="panel-body">
-                <div class="alert alert-info" id="not-avail"> <strong>Currently under development</strong></div>
+                <div class="alert alert-info" id="under-dev"> <strong>Currently under development</strong></div>
                 <div id="soil_data_container" class="soil_data_container">
+                  <div class="alert alert-warning hidden" id="soil-not-avail">
+                    <strong>Soil data is not available for the selected watershed</strong>
+                  </div>
                   <div class="flex-container-row"><img id="soil-loading" class="view-file hidden" src="/static/swat2/images/loader.gif" style="margin: auto"/></div>
                   <h6 id="error" class="hidden"></h6>
                   <div id="soilPieContainer" class="view_chart hidden"></div>
@@ -175,6 +193,9 @@
               <div class="panel-body">
                 <div class="alert alert-info" id="not-avail"> <strong>Currently under development</strong></div>
                 <div id="nasaaccess_form_container" class="nasaaccess_data_container">
+                  <div class="alert alert-warning hidden" id="na-not-avail">
+                    <strong>nasaaccess is not available for the selected watershed</strong>
+                  </div>
                   <h6><strong>Select Date Range</strong></h6>
                     <div class="input-group input-nadaterange">
                         {% gizmo na_start_pick %}
@@ -267,34 +288,13 @@
         </div>
         <div class="modal-footer">
           <div class="data-buttons">
-            <div id="rch_compute" class="btn-group" role="group">
-              <a class="btn btn-primary" role="button" id="rch_compute">
-                <span class="glyphicon glyphicon-open-file"></span>&nbsp;&nbsp;Get RCH Data</a>
-            </div>
-            <div id="sub_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-primary" role="button" id="sub_compute">
-                <span class="glyphicon glyphicon-open-file"></span>&nbsp;&nbsp;Get SUB Data</a>
-            </div>
-            <div id="lulc_clip" class="btn-group hidden" role="group">
-              <a class="btn btn-primary" role="button" id="clip_lulc">
-                <span class="glyphicon glyphicon-tree-deciduous"></span>&nbsp;&nbsp;Clip LULC Raster</a>
-            </div>
-            <div id="lulc_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-success" role="button" id="lulc_comp">
-                <span class="glyphicon glyphicon-tree-deciduous"></span>&nbsp;&nbsp;Compute LULC Statistics</a>
-            </div>
-            <div id="soil_clip" class="btn-group hidden" role="group">
-              <a class="btn btn-primary" role="button" id="clip_soil">
-                <span class="glyphicon glyphicon-grain"></span>&nbsp;&nbsp;Clip Soil Raster</a>
-            </div>
-            <div id="soil_compute" class="btn-group hidden" role="group">
-              <a class="btn btn-success" role="button" id="soil_comp">
-                <span class="glyphicon glyphicon-grain"></span>&nbsp;&nbsp;Compute Soil Statistics</a>
-            </div>
-            <div id="saveData" class="btn-group hidden" role="group">
-              <a class="btn btn-success" role="button" id="saveData">
-                <span class="glyphicon glyphicon-shopping-cart"></span>&nbsp;&nbsp;Add Data to Cart</a>
-            </div>
+            <button id="rch_compute" class="btn btn-primary" type="button">Get RCH Data</button>
+            <button id="sub_compute" class="btn btn-primary hidden" type="button">Get SUB Data</button>
+            <button id="clip_lulc" class="btn btn-primary hidden" type="button">Clip LULC Raster</button>
+            <button id="lulc_compute" class="btn btn-success hidden" type="button">Compute LULC Statistics</button>
+            <button id="clip_soil" class="btn btn-primary hidden" type="button">Clip Soil Raster</button>
+            <button id="soil_compute" class="btn btn-success hidden" type="button">Compute Soil Statistics</button>
+            <button id="saveData" class="btn btn-success hidden" type="button">Add Data to Cart</button>
           </div>
           <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>

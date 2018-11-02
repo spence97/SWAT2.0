@@ -256,3 +256,13 @@ table {
     border-color: #647899;
     border-radius: 5px;
 }
+
+input[type=submit] {
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 3px;
+    color: white;
+    padding: 5px 10px;
+    text-decoration: none;
+    cursor: pointer;
+}

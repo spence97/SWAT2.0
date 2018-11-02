@@ -7,10 +7,10 @@ from dbfread import DBF
 
 
 # User specified options
-watershed_name = 'lower_mekong' #name of watershed to be used throughout the app (needs to be different from pre-existing watershed names)
-data_path = '/home/ubuntu/swat_data/lower_mekong/' #path to folder containing all data for new model
-sub_vars = ['PRECIPmm', 'PETmm', 'ETmm','SURQmm', 'GW_Qmm'] #vars from output.sub file to upload to db
-rch_vars = ['FLOW_OUTcms', 'SEDCONCmg/kg', 'NO3_OUTkg', 'ORGP_OUTkg'] #vars from output.rch file to upload to db
+watershed_name = '' #name of watershed to be used throughout the app (needs to be different from pre-existing watershed names)
+data_path = '' #path to folder containing all data for new model
+sub_vars = ['PRECIPmm','SURQmm'] #vars from output.sub file to upload to db
+rch_vars = [''] #vars from output.rch file to upload to db
 
 #database specs
 db = {'name': 'swat2_swat_db',
@@ -31,14 +31,7 @@ geoserver = {'rest_url':'http://216.218.240.206:8080/geoserver/rest/',
 sub_column_list = ['', 'SUB', 'GIS', 'MO', 'DA', 'YR', 'AREAkm2', 'PRECIPmm', 'SNOMELTmm', 'PETmm', 'ETmm', 'SWmm', 'PERCmm',
               'SURQmm', 'GW_Qmm', 'WYLDmm', 'SYLDt/ha', 'ORGNkg/ha', 'ORGPkg/ha', 'NSURQkg/ha', 'SOLPkg/ha',
               'SEDPkg/ha', 'LATQmm', 'LATNO3kg/ha', 'GWNO3kg/ha', 'CHOLAmic/L', 'CBODUmg/L', 'DOXQmg/L', 'TNO3kg/ha']
-rchmonth_column_list = ['', 'RCH', 'GIS', 'MON', 'AREAkm2', 'FLOW_INcms', 'FLOW_OUTcms', 'EVAPcms', 'TLOSScms', 'SED_INtons',
-                  'SED_OUTtons', 'SEDCONCmg/kg', 'ORGN_INkg', 'ORGN_OUTkg', 'ORGP_INkg', 'ORGP_OUTkg', 'NO3_INkg',
-                  'NO3_OUTkg', 'NH4_INkg', 'NH4_OUTkg', 'NO2_INkg', 'NO2_OUTkg', 'MINP_INkg', 'MINP_OUTkg',
-                  'CHLA_INkg', 'CHLA_OUTkg', 'CBOD_INkg', 'CBOD_OUTkg', 'DISOX_INkg', 'DISOX_OUTkg', 'SOLPST_INmg',
-                  'SOLPST_OUTmg', 'SORPST_INmg', 'SORPST_OUTmg', 'REACTPSTmg', 'VOLPSTmg', 'SETTLPSTmg', 'RESUSP_PSTmg',
-                  'DIFFUSEPSTmg', 'REACBEDPSTmg', 'BURYPSTmg', 'BED_PSTmg', 'BACTP_OUTct', 'BACTLP_OUTct', 'CMETAL#1kg',
-                  'CMETAL#2kg', 'CMETAL#3kg', 'TOTNkg', 'TOTPkg', 'NO3ConcMg/l', 'WTMPdegc']
-rchday_column_list = ['', 'RCH', 'GIS', 'MO', 'DA', 'YR', 'AREAkm2', 'FLOW_INcms', 'FLOW_OUTcms', 'EVAPcms', 'TLOSScms', 'SED_INtons',
+rch_column_list = ['', 'RCH', 'GIS', 'MO', 'DA', 'YR', 'AREAkm2', 'FLOW_INcms', 'FLOW_OUTcms', 'EVAPcms', 'TLOSScms', 'SED_INtons',
                   'SED_OUTtons', 'SEDCONCmg/kg', 'ORGN_INkg', 'ORGN_OUTkg', 'ORGP_INkg', 'ORGP_OUTkg', 'NO3_INkg',
                   'NO3_OUTkg', 'NH4_INkg', 'NH4_OUTkg', 'NO2_INkg', 'NO2_OUTkg', 'MINP_INkg', 'MINP_OUTkg',
                   'CHLA_INkg', 'CHLA_OUTkg', 'CBOD_INkg', 'CBOD_OUTkg', 'DISOX_INkg', 'DISOX_OUTkg', 'SOLPST_INmg',
@@ -47,6 +40,34 @@ rchday_column_list = ['', 'RCH', 'GIS', 'MO', 'DA', 'YR', 'AREAkm2', 'FLOW_INcms
                   'CMETAL#2kg', 'CMETAL#3kg', 'TOTNkg', 'TOTPkg', 'NO3ConcMg/l', 'WTMPdegc']
 
 #data upload functions
+def check_available_files(watershed_name, data_path):
+    print('Gathering all available data files for upload')
+    files = {}
+
+    land_files = os.listdir(os.path.join(data_path,'Land'))
+    files['Land'] = land_files
+    for file in land_files:
+        if file.endswith('.tif') and 'dem' not in file:
+            type = file.split('.')[0]
+            if str(type) + '_key.txt' not in land_files:
+                print('The ' + str(type) + ' raster is missing a lookup key text file')
+                return 1
+
+    output_files = os.listdir(os.path.join(data_path,'Outputs'))
+    if len(output_files) > 0:
+        files['Outputs'] = output_files
+    else:
+        print('The output folder needs at least one SWAT output file to upload to the database')
+        return 1
+
+    watershed_files = os.listdir(os.path.join(data_path, 'Watershed'))
+    if watershed_name + '-reach.zip' in watershed_files and watershed_name + '-subbasin.zip' in watershed_files and watershed_name + '-reach.dbf' in watershed_files:
+        files['Watershed'] = watershed_files
+    else:
+        print('Be sure the watershed folder contains at least the {watershed_name}-reach.zip, {watershed_name}-subbasin.zip files containing valid polyline and polygon shapefiles and the {watershed_name}-reach.dbf file containing the subbasin and to_node fields')
+        return 1
+    return files
+
 def new_watershed(db, watershed_name):
     print('Creating new watershed in database')
     conn = psycopg2.connect(
@@ -106,54 +127,24 @@ def upload_swat_outputs(db, output_path, watershed_name, sub_vars, rch_vars):
         #upload output.rch data to PostgreSQL database
         if file.endswith('.rch'):
             print('uploading output_daily.rch to database')
-            if 'daily' in file:
-                print('rch')
-                rchday_path = os.path.join(output_path, file)
-                f = open(rchday_path)
-                for skip_line in f:
-                    if 'AREAkm2' in skip_line:
-                        break
-                for num, line in enumerate(f, 1):
-                    line = str(line.strip())
-                    columns = line.split()
-                    for idx, item in enumerate(rch_vars):
-                        reach = int(columns[1])
-                        dt = datetime.date(int(columns[5]), int(columns[3]), int(columns[4]))
-                        var_name = item
-                        val = float(columns[rchday_column_list.index(item)])
-                        cur.execute("""INSERT INTO output_rch_day (watershed_id, year_month_day, reach_id, var_name, val)
-                                    VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, reach, var_name, val))
+            print('rch')
+            rch_path = os.path.join(output_path, file)
+            f = open(rch_path)
+            for skip_line in f:
+                if 'AREAkm2' in skip_line:
+                    break
+            for num, line in enumerate(f, 1):
+                line = str(line.strip())
+                columns = line.split()
+                for idx, item in enumerate(rch_vars):
+                    reach = int(columns[1])
+                    dt = datetime.date(int(columns[5]), int(columns[3]), int(columns[4]))
+                    var_name = item
+                    val = float(columns[rch_column_list.index(item)])
+                    cur.execute("""INSERT INTO output_rch (watershed_id, year_month_day, reach_id, var_name, val)
+                                VALUES ({0}, '{1}', {2}, '{3}', {4})""".format(watershed_id, dt, reach, var_name, val))
 
-                    conn.commit()
-
-    sub_vars = ','.join(sub_vars)
-
-    cur.execute(
-        """SELECT MIN(year_month_day) FROM output_sub WHERE watershed_id={0}""".format(watershed_id)
-    )
-    sub_start = cur.fetchall()[0][0]
-
-    cur.execute(
-        """SELECT MAX(year_month_day) FROM output_sub WHERE watershed_id={0}""".format(watershed_id)
-    )
-
-    sub_end = cur.fetchall()[0][0]
-    rch_vars = ','.join(rch_vars)
-
-    cur.execute(
-        """SELECT MIN(year_month_day) FROM output_rch_day WHERE watershed_id={0}""".format(watershed_id)
-    )
-    rchday_start = cur.fetchall()[0][0]
-
-    cur.execute(
-        """SELECT MAX(year_month_day) FROM output_rch_day WHERE watershed_id={0}""".format(watershed_id)
-    )
-    rchday_end = cur.fetchall()[0][0]
-
-    cur.execute("""INSERT INTO watershed_info (watershed_id, rchday_start, rchday_end, rch_vars, sub_start, sub_end, sub_vars)
-                VALUES ({0}, '{1}', '{2}', '{3}', '{4}', '{5}', '{6}')""".format(watershed_id, rchday_start, rchday_end, rch_vars, sub_start, sub_end, sub_vars)
-                )
-    conn.commit()
+                conn.commit()
     conn.close()
 
 def upload_shapefiles(geoserver, watershed_path):
@@ -192,7 +183,6 @@ def upload_stream_connect(db, watershed_path, watershed_name):
     for record in table:
         stream_id = int(record['Subbasin'])
         to_node = int(record['TO_NODE'])
-        print(stream_id)
 
         cur.execute("""INSERT INTO stream_connect (watershed_id, stream_id, to_node) VALUES ({0}, {1}, {2})""".format(
             watershed_id, stream_id, to_node))
@@ -231,7 +221,7 @@ def upload_lulc_key(db, land_path, watershed_name):
     lulc_key_path = os.path.join(land_path, 'lulc_key.txt')
     f = open(lulc_key_path)
     for line in f:
-        if 'Value' not in line:
+        if 'Value' not in line and line != '\n':
             line = line.strip()
             line=line.strip(' ')
             columns = line.split(',')
@@ -274,49 +264,93 @@ def upload_soil_key(db, land_path, watershed_name):
 
         conn.commit()
 
+def watershed_info(watershed_name, available_files, sub_vars, rch_vars):
+    print('Compiling metadata for the new watershed')
+    conn = psycopg2.connect(
+        'dbname={0} user={1} password={2} host={3} port={4}'
+            .format(db['name'], db['user'], db['pass'], db['host'], db['port'])
+    )
+    cur = conn.cursor()
+    cur.execute("""SELECT * FROM watershed WHERE name = '{0}'""".format(watershed_name))
+    records = cur.fetchall()
+    watershed_id = records[0][0]
+
+    available_outputs = available_files['Outputs']
+    available_land = available_files['Land']
+    available_watershed = available_files['Watershed']
+
+    sub_vars = ','.join(sub_vars)
+    rch_vars = ','.join(rch_vars)
+
+    if 'output.sub' in available_outputs:
+        sub = 'Yes'
+        cur.execute(
+            """SELECT MIN(year_month_day) FROM output_sub WHERE watershed_id={0}""".format(watershed_id)
+        )
+        sub_start = cur.fetchall()[0][0]
+
+        cur.execute(
+            """SELECT MAX(year_month_day) FROM output_sub WHERE watershed_id={0}""".format(watershed_id)
+        )
+        sub_end = cur.fetchall()[0][0]
+    else:
+        sub = 'No'
+        sub_start = datetime.date(2000, 1, 1)
+        sub_end = datetime.date(2000, 1, 1)
+    if 'output.rch' in available_outputs:
+        rch = 'Yes'
+        cur.execute(
+            """SELECT MIN(year_month_day) FROM output_rch WHERE watershed_id={0}""".format(watershed_id)
+        )
+        rch_start = cur.fetchall()[0][0]
+
+        cur.execute(
+            """SELECT MAX(year_month_day) FROM output_rch WHERE watershed_id={0}""".format(watershed_id)
+        )
+        rch_end = cur.fetchall()[0][0]
+    else:
+        rch = 'No'
+        rch_start = datetime.date(2000, 1, 1)
+        rch_end = datetime.date(2000, 1, 1)
+    if watershed_name + '-stations.zip' in available_watershed:
+        stations = 'Yes'
+    else:
+        stations = 'No'
+    if 'lulc.tif' in available_land:
+        lulc = 'Yes'
+    else:
+        lulc = 'No'
+
+    if 'soil.tif' in available_land:
+        soil = 'Yes'
+    else:
+        soil = 'No'
+
+    if 'dem.tif' in available_land:
+        nasaaccess = 'Yes'
+    else:
+        nasaaccess = 'No'
+
+    cur.execute("""INSERT INTO watershed_info (watershed_id, rch_start, rch_end, rch_vars, sub_start, sub_end, sub_vars, lulc, soil, stations, sub, rch, nasaaccess)
+                        VALUES ({0}, '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', '{9}', '{10}', '{11}', '{12}')""".format(
+        watershed_id, rch_start,
+        rch_end, rch_vars, sub_start,
+        sub_end, sub_vars, lulc, soil, stations, sub, rch, nasaaccess)
+                )
+    conn.commit()
+    conn.close()
+
 #Check watershed availability and run data upload functions
-# if new_watershed(db, watershed_name) == 0:
-#     upload_swat_outputs(db, os.path.join(data_path, 'Outputs'), watershed_name, sub_vars, rch_vars)
-#     upload_shapefiles(geoserver, os.path.join(data_path, 'Watershed'))
-#     upload_stream_connect(db, os.path.join(data_path, 'Watershed'), watershed_name)
-#     upload_tiffiles(geoserver, os.path.join(data_path, 'Land'), watershed_name)
-#     upload_lulc_key(db, os.path.join(data_path, 'Land'), watershed_name)
-#     upload_soil_key(db, os.path.join(data_path, 'Land'), watershed_name)
-
-
-upload_shapefiles(geoserver, os.path.join(data_path, 'Watershed'))
-
-
-
-
-# if file.endswith('.hru'):
-#     print('hru')
-#     hru_path = os.path.join(output_path, file)
-#     f = open(hru_path)
-#     for skip_line in f:
-#         if 'LULC' in skip_line:
-#             break
-#
-#     for num, line in enumerate(f, 1):
-#         line = str(line.strip())
-#         columns = line.split()
-#         if len(columns[0]) > 4:
-#             split = columns[0]
-#             split_parts = re.split('(\d.*)', split)
-#             columns[0] = split_parts[0]
-#             columns.insert(1, split_parts[1])
-#         if int(columns[7]) == year_one:
-#             for idx, item in enumerate(hru_vars):
-#                 lulc = columns[0]
-#                 hru = int(columns[1])
-#                 sub = int(columns[3])
-#                 dt = datetime.date(int(columns[7]), int(columns[5]), int(columns[6]))
-#                 var_name = item
-#                 val = float(columns[hru_column_list.index(item)])
-#                 cur.execute("""INSERT INTO output_hru (watershed_id, month_day_year, sub_id, hru_id, lulc, var_name, val)
-#                      VALUES ({0}, '{1}', {2}, {3}, '{4}', '{5}', {6})""".format(watershed_id, dt, sub, hru, lulc,
-#                                                                                 var_name, val))
-#
-#             conn.commit()
-#         else:
-#             break
+if new_watershed(db, watershed_name) == 0:
+    available_files = check_available_files(watershed_name, data_path)
+    if available_files != 1:
+        upload_swat_outputs(db, os.path.join(data_path, 'Outputs'), watershed_name, sub_vars, rch_vars)
+        upload_shapefiles(geoserver, os.path.join(data_path, 'Watershed'))
+        upload_stream_connect(db, os.path.join(data_path, 'Watershed'), watershed_name)
+        upload_tiffiles(geoserver, os.path.join(data_path, 'Land'), watershed_name)
+        if 'lulc_key.txt' in available_files['Land']:
+            upload_lulc_key(db, os.path.join(data_path, 'Land'), watershed_name)
+        if 'soil_key.txt' in available_files['Land']:
+            upload_soil_key(db, os.path.join(data_path, 'Land'), watershed_name)
+        watershed_info(watershed_name, available_files, sub_vars, rch_vars)
+    print('SUCCESS: Upload Complete!')

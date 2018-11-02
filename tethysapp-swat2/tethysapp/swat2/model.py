@@ -40,32 +40,41 @@ class Watershed_Info(Base):
     # Columns
     id = Column(Integer, primary_key=True)
     watershed_id = Column(Integer, ForeignKey('watershed.id'))
-    rchday_start = Column(Date)
-    rchday_end = Column(Date)
-    rchmonth_start = Column(Date)
-    rchmonth_end = Column(Date)
+    rch_start = Column(Date)
+    rch_end = Column(Date)
     rch_vars = Column(String)
     sub_start = Column(Date)
     sub_end = Column(Date)
     sub_vars = Column(String)
+    lulc = Column(String)
+    soil = Column(String)
+    stations = Column(String)
+    rch = Column(String)
+    sub = Column(String)
+    nasaaccess = Column(String)
 
-    def __init__(self, watershed_id, rchday_start, rchday_end, rchmonth_start, rchmonth_end, rch_vars, sub_start, sub_end, sub_vars):
+
+    def __init__(self, watershed_id, rch_start, rch_end, rch_vars, sub_start, sub_end, sub_vars, lulc, soil, stations, rch, sub, nasaaccess):
         self.watershed_id = watershed_id
-        self.rchday_start = rchday_start
-        self.rchday_end = rchday_end
-        self.rchmonth_start = rchmonth_start
-        self.rchmonth_end = rchmonth_end
+        self.rch_start = rch_start
+        self.rch_end = rch_end
         self.rch_vars = rch_vars
         self.sub_start = sub_start
         self.sub_end = sub_end
         self.sub_vars = sub_vars
+        self.lulc = lulc
+        self.soil = soil
+        self.stations = stations
+        self.rch = rch
+        self.sub = sub
+        self.nasaaccess = nasaaccess
 
-class RCH_day(Base):
+class RCH(Base):
     '''
     Region SQLAlchemy DB Model
     '''
 
-    __tablename__ = 'output_rch_day'
+    __tablename__ = 'output_rch'
 
     # Table Columns
 
@@ -85,32 +94,6 @@ class RCH_day(Base):
         self.reach_id = reach_id
         self.var_name = var_name
         self.val = val
-
-# class RCH_month(Base):
-#     '''
-#     Region SQLAlchemy DB Model
-#     '''
-#
-#     __tablename__ = 'output_rch_month'
-#
-#     # Table Columns
-#
-#     id = Column(Integer, primary_key=True)
-#     watershed_id = Column(Integer, ForeignKey('watershed.id'))
-#     month_year = Column(Date)
-#     reach_id = Column(Integer)
-#     var_name = Column(String)
-#     val = Column(Float)
-#
-#     def __init__(self, watershed_id, month_year, reach_id, var_name, val):
-#         """
-#         Constructor for the table
-#         """
-#         self.watershed_id = watershed_id
-#         self.month_year = month_year
-#         self.reach_id = reach_id
-#         self.var_name = var_name
-#         self.val = val
 
 class SUB(Base):
     '''
@@ -339,7 +322,7 @@ def extract_daily_rch(watershed, watershed_id, start, end, parameters, reachid):
         param_name = rch_param_names[parameters[x]]
         rchDict['Names'].append(param_name)
 
-        rch_qr = """SELECT val FROM output_rch_day WHERE watershed_id={0} AND reach_id={1} AND var_name='{2}' AND year_month_day BETWEEN '{3}' AND '{4}'; """.format(
+        rch_qr = """SELECT val FROM output_rch WHERE watershed_id={0} AND reach_id={1} AND var_name='{2}' AND year_month_day BETWEEN '{3}' AND '{4}'; """.format(
             watershed_id, reachid, parameters[x], dt_start, dt_end)
         data = session.execute(text(rch_qr)).fetchall()
 
