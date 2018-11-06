@@ -1,14 +1,13 @@
 from tethys_sdk.services import get_spatial_dataset_engine
 from .config import *
 from .outputs_config import *
-from dbfread import DBF
 from osgeo import gdal
 from datetime import datetime
 from dateutil import relativedelta
 from collections import OrderedDict
 import numpy as np
 import pandas as pd
-import os, subprocess, requests, fiona, json, zipfile, random, string, time
+import os, subprocess, requests, fiona, json, zipfile, random, string, time, logging
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, Date
 from sqlalchemy.orm import sessionmaker
@@ -495,7 +494,12 @@ def coverage_stats(watershed, watershed_id, unique_id, outletID, raster_type):
 
 #nasaaccess function
 def nasaaccess_run(userId, streamId, email, functions, watershed, start, end):
+
+    logging.basicConfig(filename='/home/ubuntu/subprocesses/nasaaccess.log', level=logging.INFO)
+
     #identify where each of the input files are located in the server
+    print('Running nasaaccess from SWAT Data Viewer application')
+    logging.info('Running nasaaccess from SWAT Data Viewer application')
     shp_path = os.path.join(temp_workspace, userId, 'basin_upstream_' + streamId + '.json')
     dem_path = os.path.join(data_path, watershed, 'Land', 'dem' + '.tif')
     #create a new folder to store the user's requested data
@@ -506,20 +510,17 @@ def nasaaccess_run(userId, streamId, email, functions, watershed, start, end):
 
     functions = ','.join(functions)
 
-    def demote(user_uid, user_gid):
-        def result():
-            report_ids('starting demotion')
-            os.setgid(user_gid)
-            os.setuid(user_uid)
-            report_ids('finished demotion')
+    try:
+        logging.info("trying to run nasaaccess functions")
+        #pass user's inputs and file paths to the nasaaccess python function that will run detached from the app
+        run = subprocess.call(["/home/ubuntu/tethys/miniconda/envs/nasaaccess/bin/python3", "/home/ubuntu/subprocesses/nasaaccess.py", email, functions, unique_id,
+                                shp_path, dem_path, unique_path, tempdir, start, end])
 
-        return result
+        return "nasaaccess is running"
+    except Exception as e:
+        logging.info(str(e))
+        return str(e)
 
-    #pass user's inputs and file paths to the nasaaccess python function that will run detached from the app
-    run = subprocess.call(["/home/ubuntu/miniconda3/envs/nasaaccess/bin/python3", nasaaccess_script, email, functions, unique_id,
-                            shp_path, dem_path, unique_path, tempdir, start, end], preexec_fn=demote(user_uid, user_gid))
-
-    return unique_id
 
 # data writing functions
 def write_csv(data):

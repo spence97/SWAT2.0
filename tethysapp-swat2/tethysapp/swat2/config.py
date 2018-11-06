@@ -10,7 +10,8 @@ geoserver = {'rest_url':'http://216.218.240.206:8080/geoserver/rest/',
              'wfs_url':'http://216.218.240.206:8080/geoserver/wfs/',
              'user':'admin',
              'password':'geoserver',
-             'workspace':'swat'}
+             'workspace':'swat'
+             }
 
 db = {'name': 'swat_db',
             'user':'tethys_super',
@@ -24,7 +25,4 @@ nasaaccess_temp = os.path.join(Swat2.get_app_workspace().path, 'nasaaccess')
 
 nasaaccess_script = os.path.join('/home/ubuntu/subprocesses/nasaaccess.py')
 
-watershed_xml_path = os.path.join('SWAT_viewer/tethysapp/swat/public/watershed_data/watershed_info.xml')
-
-WORKSPACE = 'swat'
-GEOSERVER_URI = 'http://www.example.com/swat'
+nasaaccess_log = os.path.join('/home/ubuntu/subprocesses/nasaaccess.log')

@@ -96,18 +96,6 @@ def coverage_compute(request):
     json_dict = JsonResponse(coverage_dict)
     return(json_dict)
 
-def get_hrus(request):
-    """
-    Controller for listing all HRUs that fall within a subbasin(s) boundary
-    """
-    upstreams = request.POST.get('upstreams')
-    watershed_id = request.POST.get('watershed_id')
-    upstreamIDs = list(map(int, upstreams.split(',')))
-    upstreamIDs = tuple(upstreamIDs)
-    hru_dict = hrus(watershed_id, upstreamIDs)
-    json_dict = JsonResponse(hru_dict)
-    return(json_dict)
-
 def run_nasaaccess(request):
     """
     Controller to call nasaaccess R functions.
