@@ -26,3 +26,5 @@ nasaaccess_temp = os.path.join(Swat2.get_app_workspace().path, 'nasaaccess')
 nasaaccess_script = os.path.join('/home/ubuntu/subprocesses/nasaaccess.py')
 
 nasaaccess_log = os.path.join('/home/ubuntu/subprocesses/nasaaccess.log')
+
+gdalwarp_path = os.path.join('/home/ubuntu/tethys/miniconda/envs/tethys/bin/gdalwarp')

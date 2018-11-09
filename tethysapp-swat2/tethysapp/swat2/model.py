@@ -206,98 +206,6 @@ def init_db(engine,first_time):
 
 
 # Data extraction functions
-def extract_monthly_rch(watershed, start, end, parameters, reachid):
-
-    monthly_rch_path = os.path.join(data_path, watershed, 'Outputs', 'output_monthly.rch')
-
-    dt_start = datetime.strptime(start, '%B %Y')
-    dt_end = datetime.strptime(end, '%B %Y')
-
-    year_start = dt_start.year
-    year_end = dt_end.year
-
-    delta = relativedelta.relativedelta(dt_end, dt_start)
-    total_months = delta.years * 12 + delta.months
-
-    start_index = relativedelta.relativedelta(dt_start, datetime.strptime(str(year_start) + '-01', '%Y-%m')).months
-    end_index = start_index + total_months + 1
-
-    daterange = pd.date_range(start, end, freq='1M')
-    daterange = daterange.union([daterange[-1] + 1])
-    daterange_str = [d.strftime('%b %y') for d in daterange]
-    daterange_mil = [int(d.strftime('%s')) * 1000 for d in daterange]
-
-
-
-    f = open(monthly_rch_path)
-    for skip_line in f:
-        if 'REACH' in skip_line:
-            break
-    for num, line in enumerate(f, 1):
-        line = line.strip()
-        columns = line.split()
-        if len(columns[3]) > 3:
-            first_year = columns[3]
-            break
-
-
-
-    rchDict = {'Watershed': watershed,
-               'Dates': daterange_str,
-               'ReachID': reachid,
-               'Parameters': parameters,
-               'Values':{}, 'Names': [],
-               'Timestep': 'Monthly',
-               'FileType': 'rch'}
-    for x in range(0,len(parameters)):
-        param_index = rch_param_vals.index(parameters[x])
-        param_name = rch_param_names[parameters[x]]
-        data = []
-        f = open(monthly_rch_path)
-        start_year_str = ' ' + str(year_start-1) + ' '
-        end_year_str = str(year_end)
-        for skip_line in f:
-            if 'RCH' in skip_line:
-                break
-
-        if str(year_start) == first_year:
-            for num, line in enumerate(f,1):
-                line = line.strip()
-                columns = line.split()
-                if columns[1] == str(reachid) and 1 <= float(columns[3]) <= 12:
-                    data.append(float(columns[param_index]))
-                elif columns[3] == end_year_str:
-                    break
-
-            f.close()
-        else:
-            for skip_line in f:
-                if start_year_str in skip_line:
-                    break
-
-            for num, line in enumerate(f,1):
-                line = line.strip()
-                columns = line.split()
-                if columns[1] == str(reachid) and 1 <= float(columns[3]) <= 12:
-                    data.append(float(columns[param_index]))
-                elif columns[3] == end_year_str:
-                    break
-
-            f.close()
-
-        ts = []
-        data = data[start_index:end_index]
-        i = 0
-        while i < len(data):
-            ts.append([daterange_mil[i],data[i]])
-            i += 1
-
-
-        rchDict['Values'][x] = ts
-        rchDict['Names'].append(param_name)
-
-    return rchDict
-
 def extract_daily_rch(watershed, watershed_id, start, end, parameters, reachid):
     dt_start = datetime.strptime(start, '%B %d, %Y').strftime('%Y-%m-%d')
     dt_end = datetime.strptime(end, '%B %d, %Y').strftime('%Y-%m-%d')
@@ -397,7 +305,7 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
     input_tif = os.path.join(data_path, watershed, 'Land', raster_type + '.tif')
     output_tif = os.path.join(temp_workspace, uniqueID, watershed + '_upstream_'+ raster_type + '_' + outletID + '.tif')
 
-    subprocess.call('/home/ubuntu/tethys/miniconda/envs/tethys/bin/gdalwarp --config GDALWARP_IGNORE_BAD_CUTLINE YES -cutline {0} -crop_to_cutline -dstalpha {1} {2}'.format(input_json, input_tif, output_tif),shell=True)
+    subprocess.call('{0} --config GDALWARP_IGNORE_BAD_CUTLINE YES -cutline {1} -crop_to_cutline -dstalpha {2} {3}'.format(gdalwarp_path,input_json, input_tif, output_tif),shell=True)
 
     storename = watershed + '_upstream_' + raster_type + '_' + outletID
     headers = {'Content-type': 'image/tiff', }
@@ -412,8 +320,6 @@ def clip_raster(watershed, uniqueID, outletID, raster_type):
                                                                                  geoserver['workspace'], storename)
 
         requests.put(request_url, verify=False, headers=headers, data=data, auth=(user, password))
-    else:
-        print('layer already exists')
 
 def coverage_stats(watershed, watershed_id, unique_id, outletID, raster_type):
     Session = Swat2.get_persistent_store_database(db['name'], as_sessionmaker=True)
@@ -445,7 +351,6 @@ def coverage_stats(watershed, watershed_id, unique_id, outletID, raster_type):
     for x in unique_dict:
         if x not in nodata_values:
             unique_dict[x] = float(unique_dict[x]) / size * 100
-    print(unique_dict)
 
     # create dictionary containing all the coverage information from the raster and info.txt file
     if raster_type == 'lulc':
@@ -486,10 +391,9 @@ def coverage_stats(watershed, watershed_id, unique_id, outletID, raster_type):
 #nasaaccess function
 def nasaaccess_run(userId, streamId, email, functions, watershed, start, end):
 
-    logging.basicConfig(filename='/home/ubuntu/subprocesses/nasaaccess.log', level=logging.INFO)
+    logging.basicConfig(filename=nasaaccess_log, level=logging.INFO)
 
     #identify where each of the input files are located in the server
-    print('Running nasaaccess from SWAT Data Viewer application')
     logging.info('Running nasaaccess from SWAT Data Viewer application')
     shp_path = os.path.join(temp_workspace, userId, 'basin_upstream_' + streamId + '.json')
     dem_path = os.path.join(data_path, watershed, 'Land', 'dem' + '.tif')
@@ -542,7 +446,6 @@ def write_csv(data):
         end = datetime.strptime(dates[-1], '%b %d, %Y').strftime('%m%d%Y')
 
     file_name = watershed + '_' + file_type + streamID + '_' + param_str_low + '_' + start + 'to' + end
-    print(file_name)
     file_name.replace('/','')
     file_dict = {'Parameters': param_str,
                  'Start': start,
@@ -593,6 +496,98 @@ def zipfolder(zip_name, data_dir):
             fn = os.path.join(base, file)
             zipobj.write(fn, fn[rootlen:])
 
+
+# def extract_monthly_rch(watershed, start, end, parameters, reachid):
+#
+#     monthly_rch_path = os.path.join(data_path, watershed, 'Outputs', 'output_monthly.rch')
+#
+#     dt_start = datetime.strptime(start, '%B %Y')
+#     dt_end = datetime.strptime(end, '%B %Y')
+#
+#     year_start = dt_start.year
+#     year_end = dt_end.year
+#
+#     delta = relativedelta.relativedelta(dt_end, dt_start)
+#     total_months = delta.years * 12 + delta.months
+#
+#     start_index = relativedelta.relativedelta(dt_start, datetime.strptime(str(year_start) + '-01', '%Y-%m')).months
+#     end_index = start_index + total_months + 1
+#
+#     daterange = pd.date_range(start, end, freq='1M')
+#     daterange = daterange.union([daterange[-1] + 1])
+#     daterange_str = [d.strftime('%b %y') for d in daterange]
+#     daterange_mil = [int(d.strftime('%s')) * 1000 for d in daterange]
+#
+#
+#
+#     f = open(monthly_rch_path)
+#     for skip_line in f:
+#         if 'REACH' in skip_line:
+#             break
+#     for num, line in enumerate(f, 1):
+#         line = line.strip()
+#         columns = line.split()
+#         if len(columns[3]) > 3:
+#             first_year = columns[3]
+#             break
+#
+#
+#
+#     rchDict = {'Watershed': watershed,
+#                'Dates': daterange_str,
+#                'ReachID': reachid,
+#                'Parameters': parameters,
+#                'Values':{}, 'Names': [],
+#                'Timestep': 'Monthly',
+#                'FileType': 'rch'}
+#     for x in range(0,len(parameters)):
+#         param_index = rch_param_vals.index(parameters[x])
+#         param_name = rch_param_names[parameters[x]]
+#         data = []
+#         f = open(monthly_rch_path)
+#         start_year_str = ' ' + str(year_start-1) + ' '
+#         end_year_str = str(year_end)
+#         for skip_line in f:
+#             if 'RCH' in skip_line:
+#                 break
+#
+#         if str(year_start) == first_year:
+#             for num, line in enumerate(f,1):
+#                 line = line.strip()
+#                 columns = line.split()
+#                 if columns[1] == str(reachid) and 1 <= float(columns[3]) <= 12:
+#                     data.append(float(columns[param_index]))
+#                 elif columns[3] == end_year_str:
+#                     break
+#
+#             f.close()
+#         else:
+#             for skip_line in f:
+#                 if start_year_str in skip_line:
+#                     break
+#
+#             for num, line in enumerate(f,1):
+#                 line = line.strip()
+#                 columns = line.split()
+#                 if columns[1] == str(reachid) and 1 <= float(columns[3]) <= 12:
+#                     data.append(float(columns[param_index]))
+#                 elif columns[3] == end_year_str:
+#                     break
+#
+#             f.close()
+#
+#         ts = []
+#         data = data[start_index:end_index]
+#         i = 0
+#         while i < len(data):
+#             ts.append([daterange_mil[i],data[i]])
+#             i += 1
+#
+#
+#         rchDict['Values'][x] = ts
+#         rchDict['Names'].append(param_name)
+#
+#     return rchDict
 
 # def extract_daily_rch(watershed, start, end, parameters, reachid):
 #
