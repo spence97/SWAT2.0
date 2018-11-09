@@ -13,7 +13,7 @@ class Swat2(TethysAppBase):
     package = 'swat2'
     root_url = 'swat2'
     color = '#162d51'
-    description = 'Application to access and analyse inputs and outputs of the Soil and Water Assessment Tool (SWAT)'
+    description = 'Application to access and analyse the inputs and outputs of the Soil and Water Assessment Tool (SWAT)'
     tags = '&quot;Hydrology&quot;, &quot;Soil&quot;, &quot;Water&quot;, &quot;Timeseries&quot;'
     enable_feedback = False
     feedback_emails = []
