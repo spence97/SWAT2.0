@@ -408,7 +408,7 @@ def nasaaccess_run(userId, streamId, email, functions, watershed, start, end):
     try:
         logging.info("trying to run nasaaccess functions")
         #pass user's inputs and file paths to the nasaaccess python function that will run detached from the app
-        run = subprocess.call(["/home/ubuntu/tethys/miniconda/envs/nasaaccess/bin/python3", "/home/ubuntu/subprocesses/nasaaccess.py", email, functions, unique_id,
+        run = subprocess.call([nasaaccess_py3, nasaaccess_script, email, functions, unique_id,
                                 shp_path, dem_path, unique_path, tempdir, start, end])
 
         return "nasaaccess is running"

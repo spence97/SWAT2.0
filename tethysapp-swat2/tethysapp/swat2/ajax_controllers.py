@@ -70,7 +70,7 @@ def timeseries(request):
     if file_type == 'rch':
         # Call the correct rch data parser function based on whether the monthly or daily toggle was selected
         if monthOrDay == 'Monthly':
-            return JsonResponse({'Error': 'No monthly data available currently'})
+            print({'Error': 'No monthly data available currently'})
             # timeseries_dict = extract_monthly_rch(watershed, start, end, parameters, streamID)
         else:
             timeseries_dict = extract_daily_rch(watershed, watershed_id, start, end, parameters, streamID)
