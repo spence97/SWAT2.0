@@ -1,11 +1,10 @@
 import os, json
 from .model import *
-from .config import temp_workspace
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.core.files import File
 from sqlalchemy.sql import text
 from .app import Swat2
-from .config import temp_workspace
+from .config import *
 
 def get_upstream(request):
     """

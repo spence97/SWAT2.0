@@ -1,7 +1,6 @@
 from tethys_sdk.base import TethysAppBase, url_map_maker
 from tethys_sdk.app_settings import PersistentStoreDatabaseSetting
 
-
 class Swat2(TethysAppBase):
     """
     Tethys app class for SWAT Data Viewer.
@@ -82,7 +81,7 @@ class Swat2(TethysAppBase):
     def persistent_store_settings(self):
         ps_settings = (
             PersistentStoreDatabaseSetting(
-                name=db['name'],
+                name='swat_db',
                 description='Primary database for SWAT Online app.',
                 initializer='swat2.model.init_db',
                 required=True
