@@ -3,11 +3,10 @@ from .config import *
 from .outputs_config import *
 from osgeo import gdal
 from datetime import datetime
-from dateutil import relativedelta
 from collections import OrderedDict
 import numpy as np
 import pandas as pd
-import os, subprocess, requests, fiona, json, zipfile, random, string, time, logging
+import os, subprocess, requests, zipfile, random, string, logging
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String, ForeignKey, Date
 from sqlalchemy.orm import sessionmaker
