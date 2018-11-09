@@ -82,7 +82,7 @@ class Swat2(TethysAppBase):
     def persistent_store_settings(self):
         ps_settings = (
             PersistentStoreDatabaseSetting(
-                name='swat_db',
+                name=db['name'],
                 description='Primary database for SWAT Online app.',
                 initializer='swat2.model.init_db',
                 required=True

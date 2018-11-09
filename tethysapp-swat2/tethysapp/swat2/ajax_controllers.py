@@ -137,7 +137,7 @@ def download_files(request):
 def update_selectors(request):
     watershed_id = request.POST.get('watershed_id')
     selector_dict = {'rch':{}, 'sub':{}, 'lulc':{}, 'soil':{}, 'stations':{}, 'nasaaccess':{}}
-    Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
+    Session = Swat2.get_persistent_store_database(db['name'], as_sessionmaker=True)
     session = Session()
 
     infqr = """SELECT sub,rch,lulc,soil,stations,nasaaccess FROM watershed_info WHERE watershed_id={0}""".format(watershed_id)

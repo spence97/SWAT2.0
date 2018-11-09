@@ -1,11 +1,9 @@
 from django.shortcuts import *
 from tethys_sdk.gizmos import *
-from .config import data_path
 from datetime import datetime
-from .outputs_config import rch_param_names, sub_param_names
 from .app import Swat2
 from .model import *
-import os
+from .config import *
 from sqlalchemy.sql import text
 
 def home(request):
@@ -13,7 +11,7 @@ def home(request):
     Controller for the Output Viewer page.
     """
     # Get available watersheds and set select_watershed options
-    Session = Swat2.get_persistent_store_database('swat_db', as_sessionmaker=True)
+    Session = Swat2.get_persistent_store_database(db['name'], as_sessionmaker=True)
     session = Session()
     # Query DB for regions
     wqr = """SELECT * FROM watershed"""
