@@ -398,7 +398,7 @@ def nasaaccess_run(userId, streamId, email, functions, watershed, start, end):
     dem_path = os.path.join(data_path, watershed, 'Land', 'dem' + '.tif')
     #create a new folder to store the user's requested data
     unique_id = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
-    unique_path = os.path.join(nasaaccess_path, 'outputs', unique_id, 'nasaaccess_data')
+    unique_path = os.path.join(nasaaccess_path, 'outputs', unique_id)
     #create a temporary directory to store all intermediate data while nasaaccess functions run
     tempdir = os.path.join(nasaaccess_temp, unique_id)
 
